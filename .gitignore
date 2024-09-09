@@ -1,0 +1,19 @@
+# Conda environment
+/env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+env/
+venv/
+
+# VS Code
+.vscode/
+
+# OpenAI API Key
+.env
