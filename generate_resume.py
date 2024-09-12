@@ -1,3 +1,4 @@
+# Copyright (c) 2024 Joseph Mapula. All rights reserved. See LICENSE file for details.
 import os
 from dotenv import load_dotenv
 import openai
