@@ -3,6 +3,49 @@ import os
 from dotenv import load_dotenv
 import openai
 import anthropic
+import PyPDF2
+from docx import Document
+import tempfile
+import shutil
+
+
+# Import the logging module, which provides a flexible framework for generating log messages in Python
+import logging
+# Configure the basic settings for the logging system
+logging.basicConfig(
+    level=logging.INFO,  # Set the root logger's level to INFO
+    # This means it will capture all logs of severity INFO and above (INFO, WARNING, ERROR, CRITICAL)
+    # Logs below this level (like DEBUG) will be ignored unless explicitly set for specific loggers
+    
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    # Define the format of log messages:
+    # %(asctime)s: Timestamp when the log was created
+    # %(name)s: Name of the logger (in this case, it will be '__main__' unless specified otherwise)
+    # %(levelname)s: Severity level of the log (e.g., INFO, WARNING, ERROR)
+    # %(message)s: The actual log message
+    
+    datefmt='%Y-%m-%d %H:%M:%S'
+    # Specify the date/time format in the log messages
+)
+
+# Create a logger instance for this module
+logger = logging.getLogger(__name__)
+# __name__ is a special variable in Python that holds the name of the current module
+# In the main script, __name__ is set to '__main__'
+# This allows you to have separate loggers for different modules in larger applications
+
+# Now you can use logger to create log messages, for example:
+# logger.debug("This is a debug message")
+# logger.info("This is an info message")
+# logger.warning("This is a warning message")
+# logger.error("This is an error message")
+# logger.critical("This is a critical message")
+
+# The logging setup above ensures that:
+# 1. All log messages are consistently formatted
+# 2. Each log includes a timestamp, logger name, log level, and the message
+# 3. Only logs of INFO level and above will be displayed/saved (due to level=logging.INFO)
+# 4. You can easily adjust the logging level and format globally by modifying the basicConfig
 
 # Load environment variables from the .env file
 # This allows us to securely store and access API keys without hardcoding them
@@ -12,6 +55,39 @@ load_dotenv()
 # We retrieve these from environment variables to keep them secure
 openai.api_key = os.getenv("OPENAI_API_KEY")
 anthropic.api_key = os.getenv("ANTHROPIC_API_KEY")
+
+
+def read_file(file_path):
+    """
+    Read content from various file types (PDF, DOCX, TXT, MD).
+    
+    Args:
+        file_path (str): Path to the file to be read.
+    
+    Returns:
+        str: Content of the file.
+    
+    Raises:
+        ValueError: If the file type is not supported.
+    """
+    _, file_extension = os.path.splitext(file_path)
+    
+    if file_extension.lower() == '.pdf':
+        with open(file_path, 'rb') as file:
+            pdf_reader = PyPDF2.PdfReader(file)
+            return ' '.join(page.extract_text() for page in pdf_reader.pages)
+    
+    elif file_extension.lower() == '.docx':
+        doc = Document(file_path)
+        return ' '.join(paragraph.text for paragraph in doc.paragraphs)
+    
+    elif file_extension.lower() in ['.txt', '.md']:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            return file.read()
+    
+    else:
+        raise ValueError(f"Unsupported file type: {file_extension}")
+
 
 def generate_resume(job_description, background_info, best_practices, provider="openai", model="gpt-3.5-turbo", custom_prompt=None, max_tokens=1000):
     """
@@ -83,7 +159,8 @@ def generate_resume(job_description, background_info, best_practices, provider="
         return response.choices[0].message['content'].strip()
     elif provider == "anthropic":
         # Create a completion using Anthropic's API
-        response = anthropic.Completion.create(
+        client = anthropic.Client(api_key=anthropic.api_key)
+        response = client.complete(
             model=model,  # The specific Claude model to use
             prompt=f"Human: {prompt}\n\nAssistant:",  # Format the prompt for Claude
             max_tokens_to_sample=max_tokens,  # Limit the response length. Adjust this for longer or shorter resumes.
@@ -102,6 +179,55 @@ def generate_resume(job_description, background_info, best_practices, provider="
 # 1.0: Very creative. More diverse outputs, but may occasionally be less coherent.
 # 2.0: Highly unpredictable. Can generate more unusual or creative outputs, but with higher risk of incoherence.
 
+
+def process_uploaded_files(job_description_file, background_info_file, best_practices_file):
+    """
+    Process uploaded files and extract their contents.
+    
+    Args:
+        job_description_file (file object): Uploaded job description file.
+        background_info_file (file object): Uploaded background information file.
+        best_practices_file (file object): Uploaded best practices file.
+    
+    Returns:
+        tuple: Extracted contents of job description, background info, and best practices.
+    """
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_job_path = os.path.join(temp_dir, job_description_file.name)
+        temp_background_path = os.path.join(temp_dir, background_info_file.name)
+        temp_practices_path = os.path.join(temp_dir, best_practices_file.name)
+        
+        try:
+            # Save uploaded files to temporary directory
+            with open(temp_job_path, 'wb') as f:
+                shutil.copyfileobj(job_description_file, f)
+            with open(temp_background_path, 'wb') as f:
+                shutil.copyfileobj(background_info_file, f)
+            with open(temp_practices_path, 'wb') as f:
+                shutil.copyfileobj(best_practices_file, f)
+            
+            # Read contents from temporary files
+            job_description = read_file(temp_job_path)
+            background_info = read_file(temp_background_path)
+            best_practices = read_file(temp_practices_path)
+            
+            return job_description, background_info, best_practices
+        
+        finally:
+            # Temporary directory and its contents are automatically removed
+            pass
+
+def save_resume(resume_content, output_path):
+    """
+    Save the generated resume to a file.
+    
+    Args:
+        resume_content (str): The content of the generated resume.
+        output_path (str): Path where the resume should be saved.
+    """
+    with open(output_path, 'w', encoding='utf-8') as file:
+        file.write(resume_content)
+
 def main():
     """
     The main function to demonstrate the use of the generate_resume function.
@@ -110,45 +236,42 @@ def main():
     providers and models. In a real-world scenario, these inputs would come
     from user input or file reads.
     """
+    # Example file paths (in a real scenario, these would come from user uploads)
+    job_description_path = 'path/to/job_description.pdf'
+    background_info_path = 'path/to/background_info.docx'
+    best_practices_path = 'path/to/best_practices.txt'
+    
+    try:
+        # Open files and process them
+        with open(job_description_path, 'rb') as job_file, \
+             open(background_info_path, 'rb') as background_file, \
+             open(best_practices_path, 'rb') as practices_file:
+            
+            job_description, background_info, best_practices = process_uploaded_files(
+                job_file, background_file, practices_file
+            )
+        
+        # Generate resumes using both providers
+        openai_resume = generate_resume(job_description, background_info, best_practices, provider="openai", model="gpt-3.5-turbo")
+        claude_resume = generate_resume(job_description, background_info, best_practices, provider="anthropic", model="claude-3.5-sonnet")
+        
+        # Save generated resumes
+        save_resume(openai_resume, 'openai_generated_resume.md')
+        save_resume(claude_resume, 'claude_generated_resume.md')
+        
+        logger.info("Resumes generated and saved successfully!")
+        
+    except FileNotFoundError as e:
+        logger.error(f"File not found: {str(e)}")
+    except ValueError as e:
+        logger.error(f"Invalid input: {str(e)}")
+    except IOError as e:
+        logger.error(f"I/O error occurred: {str(e)}")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {str(e)}")
 
-    # Sample job description (in a real scenario, this could be read from a file or user input)
-    job_description = """
-    We are seeking a Product Manager to lead the development of innovative software products. 
-    The ideal candidate will have experience in agile methodologies, user-centered design, 
-    and data-driven decision making. Strong communication and leadership skills are essential.
-    """
 
-    # Sample background information (in a real scenario, this could be read from a file or user input)
-    background_info = """
-    I have 5 years of experience in software development, including 2 years as a junior product manager. 
-    I've led cross-functional teams, conducted user research, and launched several successful products. 
-    I have a BS in Computer Science and an MBA.
-    """
-
-    # Sample best practices (in a real scenario, this could be read from a file or user input)
-    best_practices = """
-    1. Tailor the resume to the specific job description
-    2. Use action verbs and quantify achievements
-    3. Keep the resume concise and focused
-    4. Highlight relevant skills and experiences
-    5. Use a clean, professional format
-    """
-
-    # Generate a resume using OpenAI's GPT-3.5-turbo model
-    openai_resume = generate_resume(job_description, background_info, best_practices, provider="openai", model="gpt-3.5-turbo")
-    print("OpenAI Generated Resume:")
-    print(openai_resume)
-    print("\n" + "="*50 + "\n")  # Separator for readability
-
-    # Generate a resume using Anthropic's Claude model
-    claude_resume = generate_resume(job_description, background_info, best_practices, provider="anthropic", model="claude-3.5-sonnet")
-    print("Anthropic Generated Resume:")
-    print(claude_resume)
-
-    # TODO: Add logic to save the generated resumes to files
-    # TODO: Implement a way to read job descriptions, background info, and best practices from files
     # TODO: Create a user interface for inputting information and selecting options
-    # TODO: Implement error handling and logging
     # TODO: Add a feedback mechanism for iterating on the generated resumes
 
 if __name__ == "__main__":
