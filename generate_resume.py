@@ -65,6 +65,9 @@ def validate_api_keys():
     logger.info("API keys validated successfully.")
 validate_api_keys()
 
+# Create Anthropic client
+anthropic_client = anthropic.Client(api_key=anthropic_api_key)
+
 
 def read_file(file_path):
     """
@@ -168,8 +171,7 @@ def generate_resume(job_description, background_info, best_practices, provider="
         return response.choices[0].message['content'].strip()
     elif provider == "anthropic":
         # Create a completion using Anthropic's API
-        client = anthropic.Client(api_key=anthropic.api_key)
-        response = client.complete(
+        response = anthropic_client.complete(
             model=model,  # The specific Claude model to use
             prompt=f"Human: {prompt}\n\nAssistant:",  # Format the prompt for Claude
             max_tokens_to_sample=max_tokens,  # Limit the response length. Adjust this for longer or shorter resumes.
