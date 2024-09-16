@@ -7,8 +7,6 @@ import PyPDF2
 from docx import Document
 import tempfile
 import shutil
-
-
 # Import the logging module, which provides a flexible framework for generating log messages in Python
 import logging
 # Configure the basic settings for the logging system
@@ -52,9 +50,20 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # Set up API keys for both OpenAI and Anthropic
-# We retrieve these from environment variables to keep them secure
-openai.api_key = os.getenv("OPENAI_API_KEY")
-anthropic.api_key = os.getenv("ANTHROPIC_API_KEY")
+def validate_api_keys():
+    openai_key = os.getenv("OPENAI_API_KEY")
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    
+    if not openai_key:
+        logger.error("OpenAI API key is missing. Please check your .env file.")
+        raise ValueError("OpenAI API key is required")
+    
+    if not anthropic_key:
+        logger.error("Anthropic API key is missing. Please check your .env file.")
+        raise ValueError("Anthropic API key is required")
+    
+    logger.info("API keys validated successfully.")
+validate_api_keys()
 
 
 def read_file(file_path):
