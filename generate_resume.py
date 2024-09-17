@@ -121,7 +121,8 @@ def generate_resume(
     model: str = "gpt-3.5-turbo",
     custom_prompt: Optional[str] = None,
     max_tokens: int = 1000
-) -> str:    """
+) -> str:    
+    """
     Generate a tailored resume based on the provided information.
 
     This function takes various inputs and uses an AI model to generate a resume.
