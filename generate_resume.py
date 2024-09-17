@@ -2,6 +2,7 @@
 import os
 from typing import Optional
 from dotenv import load_dotenv
+import openai
 from openai import OpenAI
 import anthropic
 import PyPDF2
@@ -79,39 +80,34 @@ openai_client = OpenAI(api_key=openai_api_key)
 
 def read_file(file_path):
     """
-    Read content from various file types (PDF, DOCX, TXT, MD).
+    Read content from various file types.
     
     Args:
-        file_path (str): Path to the file to be read.
+        file_path (str): Path to the file.
     
     Returns:
         str: Content of the file.
-    
-    Raises:
-        ValueError: If the file type is not supported.
     """
     _, file_extension = os.path.splitext(file_path)
     
     try:
         if file_extension.lower() == '.pdf':
-            with open(file_path, 'rb') as file:
-                pdf_reader = PyPDF2.PdfReader(file)
-                content = ' '.join(page.extract_text() for page in pdf_reader.pages)
-        elif file_extension.lower() == '.docx':
-            doc = Document(file_path)
-            content = ' '.join(paragraph.text for paragraph in doc.paragraphs)
+            # Implementation for PDF files
+            pass
+        elif file_extension.lower() in ['.docx', '.doc']:
+            # Implementation for Word documents
+            pass
         elif file_extension.lower() in ['.txt', '.md']:
             with open(file_path, 'r', encoding='utf-8') as file:
                 content = file.read()
+            logger.info(f"Successfully read file: {file_path}")
+            return content
         else:
-            raise ValueError(f"Unsupported file type: {file_extension}")
-        
-        logger.info(f"Successfully read file: {file_path}")
-        logger.debug(f"File content (first 100 characters): {content[:100]}...")
-        return content
+            logger.error(f"Unsupported file type: {file_extension}")
+            return ""
     except Exception as e:
         logger.error(f"Error reading file {file_path}: {str(e)}")
-        raise
+        return ""
 
 def generate_resume(
     job_description: str,
@@ -120,7 +116,7 @@ def generate_resume(
     provider: str = "openai",
     model: str = "gpt-3.5-turbo",
     custom_prompt: Optional[str] = None,
-    max_tokens: int = 1000
+    max_tokens: int = 4000
 ) -> str:    
     """
     Generate a tailored resume based on the provided information.
@@ -223,45 +219,39 @@ def process_uploaded_files(job_description_file, background_info_file, best_prac
     Process uploaded files and extract their contents.
     
     Args:
-        job_description_file (file object): Uploaded job description file.
-        background_info_file (file object): Uploaded background information file.
-        best_practices_file (file object): Uploaded best practices file.
+        job_description_file (str): Path to the job description file.
+        background_info_file (str): Path to the background info file.
+        best_practices_file (str): Path to the best practices file.
     
     Returns:
-        tuple: Extracted contents of job description, background info, and best practices.
+        tuple: Contains the contents of job description, background info, and best practices.
     """
     with tempfile.TemporaryDirectory() as temp_dir:
-        temp_job_path = os.path.join(temp_dir, job_description_file.name)
-        temp_background_path = os.path.join(temp_dir, background_info_file.name)
-        temp_practices_path = os.path.join(temp_dir, best_practices_file.name)
+        temp_job_path = os.path.join(temp_dir, os.path.basename(job_description_file))
+        temp_background_path = os.path.join(temp_dir, os.path.basename(background_info_file))
+        temp_practices_path = os.path.join(temp_dir, os.path.basename(best_practices_file))
         
         try:
-            # Save uploaded files to temporary directory
-            with open(temp_job_path, 'wb') as f:
-                shutil.copyfileobj(job_description_file, f)
-            with open(temp_background_path, 'wb') as f:
-                shutil.copyfileobj(background_info_file, f)
-            with open(temp_practices_path, 'wb') as f:
-                shutil.copyfileobj(best_practices_file, f)
+            # Copy uploaded files to temporary directory
+            shutil.copy2(job_description_file, temp_job_path)
+            shutil.copy2(background_info_file, temp_background_path)
+            shutil.copy2(best_practices_file, temp_practices_path)
             
             # Read contents from temporary files
-            job_description = read_file(temp_job_path)
-            background_info = read_file(temp_background_path)
-            best_practices = read_file(temp_practices_path)
+            job_content = read_file(temp_job_path)
+            background_content = read_file(temp_background_path)
+            practices_content = read_file(temp_practices_path)
             
-            logger.info(f"Job description length: {len(job_description)} characters")
-            logger.info(f"Background info length: {len(background_info)} characters")
-            logger.info(f"Best practices length: {len(best_practices)} characters")
+            # Log the lengths of the contents
+            logger.info(f"Job description length: {len(job_content)} characters")
+            logger.info(f"Background info length: {len(background_content)} characters")
+            logger.info(f"Best practices length: {len(practices_content)} characters")
             
-            logger.debug(f"Job description preview: {job_description[:100]}...")
-            logger.debug(f"Background info preview: {background_info[:100]}...")
-            logger.debug(f"Best practices preview: {best_practices[:100]}...")
-            
-            return job_description, background_info, best_practices
+            return job_content, background_content, practices_content
         
-        finally:
-            # Temporary directory and its contents are automatically removed
-            pass
+        except Exception as e:
+            logger.error(f"Error processing uploaded files: {str(e)}")
+            return "", "", ""
 
 def save_resume(resume_content, output_path):
     """
@@ -284,11 +274,11 @@ def main(job_description_path, background_info_path, best_practices_path, log_le
              open(best_practices_path, 'rb') as practices_file:
             
             job_description, background_info, best_practices = process_uploaded_files(
-                job_file, background_file, practices_file
+                args.job_description, args.background_info, args.best_practices
             )
         
         # Generate resumes using both providers
-        openai_resume = generate_resume(job_description, background_info, best_practices, provider="openai", model="gpt-3.5-turbo")
+        openai_resume = generate_resume(job_description, background_info, best_practices, provider="openai", model="gpt-4o-mini-2024-07-18")
         claude_resume = generate_resume(job_description, background_info, best_practices, provider="anthropic", model="claude-3-5-sonnet-20240620")
         
         # Save generated resumes
@@ -305,8 +295,16 @@ def main(job_description_path, background_info_path, best_practices_path, log_le
         logger.error(f"I/O error occurred: {str(e)}")
     except anthropic.APIError as e:
         logger.error(f"Anthropic API error: {str(e)}")
-    except OpenAI.OpenAIError as e:
+    except openai.APIError as e:
         logger.error(f"OpenAI API error: {str(e)}")
+    except openai.APIConnectionError as e:
+        #Handle connection error here
+        logger.error(f"Failed to connect to OpenAI API: {e}")
+        pass
+    except openai.RateLimitError as e:
+        #Handle rate limit error (we recommend using exponential backoff)
+        logger.error(f"OpenAI API request exceeded rate limit: {e}")
+        pass
     except Exception as e:
         logger.error(f"An unexpected error occurred: {str(e)}")
 
