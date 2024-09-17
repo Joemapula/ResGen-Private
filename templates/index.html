@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Resume Generator</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; }
+        h1 { color: #333; }
+        form { margin-top: 20px; }
+        label { display: block; margin-top: 10px; }
+        input[type="file"] { margin-top: 5px; }
+        input[type="submit"] { margin-top: 20px; padding: 10px 20px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>AI Resume Generator</h1>
+    <form method="POST" enctype="multipart/form-data">
+        <label for="job_description">Job Description:</label>
+        <input type="file" name="job_description" accept=".pdf,.docx,.txt,.md" required>
+        
+        <label for="background_info">Background Information:</label>
+        <input type="file" name="background_info" accept=".pdf,.docx,.txt,.md" required>
+        
+        <label for="best_practices">Best Practices:</label>
+        <input type="file" name="best_practices" accept=".pdf,.docx,.txt,.md" required>
+        
+        <input type="submit" value="Generate Resume">
+    </form>
+</body>
+</html>
