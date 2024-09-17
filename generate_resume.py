@@ -1,7 +1,7 @@
 # Copyright (c) 2024 Joseph Mapula. All rights reserved. See LICENSE file for details.
 import os
 from dotenv import load_dotenv
-import openai
+from openai import OpenAI
 import anthropic
 import PyPDF2
 from docx import Document
@@ -51,6 +51,10 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # Set up API keys for both OpenAI and Anthropic
+# Set up API keys for both OpenAI and Anthropic
+openai_api_key = os.getenv("OPENAI_API_KEY")
+anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+
 def validate_api_keys():
     openai_key = os.getenv("OPENAI_API_KEY")
     anthropic_key = os.getenv("ANTHROPIC_API_KEY")
@@ -67,8 +71,10 @@ def validate_api_keys():
 validate_api_keys()
 
 # Create Anthropic client
-anthropic_client = anthropic.Client(api_key=anthropic_api_key)
+anthropic_client = anthropic.Anthropic(api_key=anthropic_api_key)
 
+# Initialize the OpenAI client
+openai_client = OpenAI(api_key=openai_api_key)
 
 def read_file(file_path):
     """
@@ -157,7 +163,7 @@ def generate_resume(job_description, background_info, best_practices, provider="
     # Use the appropriate AI provider based on the 'provider' parameter
     if provider == "openai":
         # Create a chat completion using OpenAI's API
-        response = openai.ChatCompletion.create(
+        response = openai_client.chat.completions.create(
             model=model,  # The specific model to use (e.g., 'gpt-3.5-turbo')
             messages=[
                 {"role": "system", "content": "You are an expert resume writer specializing in product management positions."},
@@ -169,17 +175,22 @@ def generate_resume(job_description, background_info, best_practices, provider="
             temperature=0.7,  # Control randomness (0.7 is moderately creative)
         )
         # Extract and return the generated content from the API response
-        return response.choices[0].message['content'].strip()
+        return response.choices[0].message.content.strip()
     elif provider == "anthropic":
         # Create a completion using Anthropic's API
-        response = anthropic_client.complete(
+        message = anthropic_client.messages.create(
             model=model,  # The specific Claude model to use
-            prompt=f"Human: {prompt}\n\nAssistant:",  # Format the prompt for Claude
-            max_tokens_to_sample=max_tokens,  # Limit the response length. Adjust this for longer or shorter resumes.
+            max_tokens=max_tokens,  # Limit the response length. Adjust this for longer or shorter resumes.
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
             temperature=0.7,  # Control randomness (0.7 is moderately creative)
         )
         # Extract and return the generated content from the API response
-        return response.completion.strip()
+        return message.content[0].text.strip()
     else:
         # Raise an error if an unsupported provider is specified
         raise ValueError("Unsupported provider. Please use 'openai' or 'anthropic'.")
@@ -253,7 +264,7 @@ def main(job_description_path, background_info_path, best_practices_path):
         
         # Generate resumes using both providers
         openai_resume = generate_resume(job_description, background_info, best_practices, provider="openai", model="gpt-3.5-turbo")
-        claude_resume = generate_resume(job_description, background_info, best_practices, provider="anthropic", model="claude-3.5-sonnet")
+        claude_resume = generate_resume(job_description, background_info, best_practices, provider="anthropic", model="claude-3-5-sonnet-20240620")
         
         # Save generated resumes
         save_resume(openai_resume, 'openai_generated_resume.md')
@@ -267,8 +278,13 @@ def main(job_description_path, background_info_path, best_practices_path):
         logger.error(f"Invalid input: {str(e)}")
     except IOError as e:
         logger.error(f"I/O error occurred: {str(e)}")
+    except anthropic.APIError as e:
+        logger.error(f"Anthropic API error: {str(e)}")
+    except OpenAI.OpenAIError as e:
+        logger.error(f"OpenAI API error: {str(e)}")
     except Exception as e:
         logger.error(f"An unexpected error occurred: {str(e)}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate resumes using AI")
