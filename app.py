@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, send_file
 import os
 from werkzeug.utils import secure_filename
-from your_resume_generator import generate_resume, process_uploaded_files
+from generate_resume import generate_resume, process_uploaded_files
 
 app = Flask(__name__)
 
