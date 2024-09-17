@@ -5,6 +5,7 @@ import openai
 import anthropic
 import PyPDF2
 from docx import Document
+import argparse
 import tempfile
 import shutil
 # Import the logging module, which provides a flexible framework for generating log messages in Python
@@ -239,19 +240,7 @@ def save_resume(resume_content, output_path):
     with open(output_path, 'w', encoding='utf-8') as file:
         file.write(resume_content)
 
-def main():
-    """
-    The main function to demonstrate the use of the generate_resume function.
-
-    This function sets up sample inputs and generates resumes using different
-    providers and models. In a real-world scenario, these inputs would come
-    from user input or file reads.
-    """
-    # Example file paths (in a real scenario, these would come from user uploads)
-    job_description_path = 'path/to/job_description.pdf'
-    background_info_path = 'path/to/background_info.docx'
-    best_practices_path = 'path/to/best_practices.txt'
-    
+def main(job_description_path, background_info_path, best_practices_path):
     try:
         # Open files and process them
         with open(job_description_path, 'rb') as job_file, \
@@ -281,11 +270,17 @@ def main():
     except Exception as e:
         logger.error(f"An unexpected error occurred: {str(e)}")
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Generate resumes using AI")
+    parser.add_argument("job_description", help="Path to the job description file")
+    parser.add_argument("background_info", help="Path to the background information file")
+    parser.add_argument("best_practices", help="Path to the best practices file")
+    
+    args = parser.parse_args()
+    
+    main(args.job_description, args.background_info, args.best_practices)
+
 
     # TODO: Create a user interface for inputting information and selecting options
     # TODO: Add a feedback mechanism for iterating on the generated resumes
 
-if __name__ == "__main__":
-    # This block ensures that the main() function is only called if this script is run directly,
-    # not if it's imported as a module in another script.
-    main()
