@@ -1,5 +1,6 @@
 # Copyright (c) 2024 Joseph Mapula. All rights reserved. See LICENSE file for details.
 import os
+from typing import Optional
 from dotenv import load_dotenv
 from openai import OpenAI
 import anthropic
@@ -91,25 +92,36 @@ def read_file(file_path):
     """
     _, file_extension = os.path.splitext(file_path)
     
-    if file_extension.lower() == '.pdf':
-        with open(file_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
-            return ' '.join(page.extract_text() for page in pdf_reader.pages)
-    
-    elif file_extension.lower() == '.docx':
-        doc = Document(file_path)
-        return ' '.join(paragraph.text for paragraph in doc.paragraphs)
-    
-    elif file_extension.lower() in ['.txt', '.md']:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            return file.read()
-    
-    else:
-        raise ValueError(f"Unsupported file type: {file_extension}")
+    try:
+        if file_extension.lower() == '.pdf':
+            with open(file_path, 'rb') as file:
+                pdf_reader = PyPDF2.PdfReader(file)
+                content = ' '.join(page.extract_text() for page in pdf_reader.pages)
+        elif file_extension.lower() == '.docx':
+            doc = Document(file_path)
+            content = ' '.join(paragraph.text for paragraph in doc.paragraphs)
+        elif file_extension.lower() in ['.txt', '.md']:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                content = file.read()
+        else:
+            raise ValueError(f"Unsupported file type: {file_extension}")
+        
+        logger.info(f"Successfully read file: {file_path}")
+        logger.debug(f"File content (first 100 characters): {content[:100]}...")
+        return content
+    except Exception as e:
+        logger.error(f"Error reading file {file_path}: {str(e)}")
+        raise
 
-
-def generate_resume(job_description, background_info, best_practices, provider="openai", model="gpt-3.5-turbo", custom_prompt=None, max_tokens=1000):
-    """
+def generate_resume(
+    job_description: str,
+    background_info: str,
+    best_practices: str,
+    provider: str = "openai",
+    model: str = "gpt-3.5-turbo",
+    custom_prompt: Optional[str] = None,
+    max_tokens: int = 1000
+) -> str:    """
     Generate a tailored resume based on the provided information.
 
     This function takes various inputs and uses an AI model to generate a resume.
@@ -160,6 +172,8 @@ def generate_resume(job_description, background_info, best_practices, provider="
     # Use the custom prompt if provided, otherwise use the default
     prompt = custom_prompt if custom_prompt else default_prompt
 
+    logger.info(f"Generating resume using {provider} ({model})")
+    logger.debug(f"Prompt preview: {prompt[:200]}...")
     # Use the appropriate AI provider based on the 'provider' parameter
     if provider == "openai":
         # Create a chat completion using OpenAI's API
@@ -234,6 +248,14 @@ def process_uploaded_files(job_description_file, background_info_file, best_prac
             background_info = read_file(temp_background_path)
             best_practices = read_file(temp_practices_path)
             
+            logger.info(f"Job description length: {len(job_description)} characters")
+            logger.info(f"Background info length: {len(background_info)} characters")
+            logger.info(f"Best practices length: {len(best_practices)} characters")
+            
+            logger.debug(f"Job description preview: {job_description[:100]}...")
+            logger.debug(f"Background info preview: {background_info[:100]}...")
+            logger.debug(f"Best practices preview: {best_practices[:100]}...")
+            
             return job_description, background_info, best_practices
         
         finally:
@@ -251,7 +273,9 @@ def save_resume(resume_content, output_path):
     with open(output_path, 'w', encoding='utf-8') as file:
         file.write(resume_content)
 
-def main(job_description_path, background_info_path, best_practices_path):
+def main(job_description_path, background_info_path, best_practices_path, log_level=logging.INFO):
+    # Set the log level
+    logging.getLogger().setLevel(log_level)
     try:
         # Open files and process them
         with open(job_description_path, 'rb') as job_file, \
@@ -291,11 +315,13 @@ if __name__ == "__main__":
     parser.add_argument("job_description", help="Path to the job description file")
     parser.add_argument("background_info", help="Path to the background information file")
     parser.add_argument("best_practices", help="Path to the best practices file")
+    parser.add_argument("--log-level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                        default='INFO', help="Set the logging level")
     
     args = parser.parse_args()
     
-    main(args.job_description, args.background_info, args.best_practices)
-
+    log_level = getattr(logging, args.log_level)
+    main(args.job_description, args.background_info, args.best_practices, log_level)
 
     # TODO: Create a user interface for inputting information and selecting options
     # TODO: Add a feedback mechanism for iterating on the generated resumes
