@@ -58,8 +58,9 @@ cd resgen
 
 2. Install dependencies
 ```bash
-pip install -r requirements.txt
+setup.bat
 ```
+
 
 3. Set up environment variables
 ```bash
