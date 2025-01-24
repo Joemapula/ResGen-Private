@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import openai
 from openai import OpenAI
 import anthropic
+from mistralai import Mistral
 import PyPDF2
 from docx import Document
 import argparse
@@ -52,31 +53,34 @@ logger = logging.getLogger(__name__)
 # This allows us to securely store and access API keys without hardcoding them
 load_dotenv()
 
-# Set up API keys for both OpenAI and Anthropic
-# Set up API keys for both OpenAI and Anthropic
+# Set up API keys for OpenAIm, Anthropic, and Mistral (missing will return none)
 openai_api_key = os.getenv("OPENAI_API_KEY")
 anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+mistral_api_key = os.getenv("MISTRAL_API_KEY")
 
 def validate_api_keys():
-    openai_key = os.getenv("OPENAI_API_KEY")
-    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
-    
-    if not openai_key:
+    if not openai_api_key:
         logger.error("OpenAI API key is missing. Please check your .env file.")
         raise ValueError("OpenAI API key is required")
-    
-    if not anthropic_key:
+    if not anthropic_api_key:
         logger.error("Anthropic API key is missing. Please check your .env file.")
         raise ValueError("Anthropic API key is required")
-    
+    if not mistral_api_key: 
+        logger.error("Mistral API key is missing. Please check your .env file.")
+        raise ValueError("Mistral API key is required")
     logger.info("API keys validated successfully.")
+# Validate API keys before proceeding
 validate_api_keys()
 
-# Create Anthropic client
-anthropic_client = anthropic.Anthropic(api_key=anthropic_api_key)
-
-# Initialize the OpenAI client
-openai_client = OpenAI(api_key=openai_api_key)
+# Create clients for each provider
+try:
+    anthropic_client = anthropic.Anthropic(api_key=anthropic_api_key)
+    openai_client = OpenAI(api_key=openai_api_key)
+    mistral_client = Mistral(api_key=mistral_api_key)
+    logger.info("Clients created successfully.")
+except Exception as e:
+    logger.error(f"Error creating API clients: {e}")
+    raise
 
 def read_file(file_path):
     """
@@ -113,8 +117,8 @@ def generate_resume(
     job_description: str,
     background_info: str,
     best_practices: str,
-    provider: str = "openai",
-    model: str = "gpt-3.5-turbo",
+    provider: str = "mistral",
+    model: str = "mistral-large-latest",
     custom_prompt: Optional[str] = None,
     max_tokens: int = 4000
 ) -> str:    
@@ -128,7 +132,7 @@ def generate_resume(
         job_description (str): The description of the job being applied for.
         background_info (str): The applicant's professional background.
         best_practices (str): Best practices for resume writing.
-        provider (str): The AI provider to use ('openai' or 'anthropic').
+        provider (str): The AI provider to use ('openai', 'anthropic', or 'mistral').
         model (str): The specific model to use (e.g., 'gpt-3.5-turbo' for OpenAI).
         custom_prompt (str, optional): A custom prompt to override the default.
         max_tokens (int): The maximum number of tokens in the generated resume.
@@ -202,10 +206,19 @@ def generate_resume(
         )
         # Extract and return the generated content from the API response
         return message.content[0].text.strip()
+    elif provider == "mistral":
+        # Create a completion using Mistral's API
+        response = mistral_client.generate(
+            model=model,
+            prompt=prompt,
+            max_tokens=max_tokens,
+            temperature=0.7  # Control randomness (0.7 is moderately creative)
+        )
+        # Extract and return the generated content from the API response
+        return response["generated_text"].strip()
     else:
         # Raise an error if an unsupported provider is specified
-        raise ValueError("Unsupported provider. Please use 'openai' or 'anthropic'.")
-
+        raise ValueError("Unsupported provider. Please use 'openai', 'anthropic', or 'mistral'.")
 # Temperature spectrum:
 # 0.0: Deterministic/repetitive. Always generates the most probable completion.
 # 0.3: Conservative/focused. Generates more predictable and coherent text.
