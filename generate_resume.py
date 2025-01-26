@@ -96,11 +96,18 @@ def read_file(file_path):
     
     try:
         if file_extension.lower() == '.pdf':
-            # Implementation for PDF files
-            pass
+            with open(file_path, 'rb') as file:
+                reader = PyPDF2.PdfFileReader(file)
+                content = ""
+                for page_num in range(reader.numPages):
+                    content += reader.getPage(page_num).extract_text()
+            logger.info(f"Successfully read PDF file: {file_path}")
+            return content
         elif file_extension.lower() in ['.docx', '.doc']:
-            # Implementation for Word documents
-            pass
+            doc = Document(file_path)
+            content = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+            logger.info(f"Successfully read Word document: {file_path}")
+            return content
         elif file_extension.lower() in ['.txt', '.md']:
             with open(file_path, 'r', encoding='utf-8') as file:
                 content = file.read()
