@@ -15,7 +15,7 @@ import shutil
 import logging
 # Configure the basic settings for the logging system
 logging.basicConfig(
-    level=logging.INFO,  # Set the root logger's level to INFO
+    level=logging.DEBUG,  # Set the root logger's level 
     # This means it will capture all logs of severity INFO and above (INFO, WARNING, ERROR, CRITICAL)
     # Logs below this level (like DEBUG) will be ignored unless explicitly set for specific loggers
     
@@ -214,15 +214,19 @@ def generate_resume(
         # Extract and return the generated content from the API response
         return message.content[0].text.strip()
     elif provider == "mistral":
-        # Create a completion using Mistral's API
-        response = mistral_client.generate(
+        # Create a chat completion using Mistral's API
+        response = mistral_client.chat.complete(
             model=model,
-            prompt=prompt,
-            max_tokens=max_tokens,
-            temperature=0.7  # Control randomness (0.7 is moderately creative)
+            messages=[{
+                "role": "user",
+                "content": prompt
+            }],
+            temperature=0.7,  # Control randomness (0.7 is moderately creative)
+            max_tokens=max_tokens
         )
+
         # Extract and return the generated content from the API response
-        return response["generated_text"].strip()
+        return response.choices[0].message.content.strip()
     else:
         # Raise an error if an unsupported provider is specified
         raise ValueError("Unsupported provider. Please use 'openai', 'anthropic', or 'mistral'.")
@@ -239,23 +243,23 @@ def process_uploaded_files(job_description_file, background_info_file, best_prac
     Process uploaded files and extract their contents.
     
     Args:
-        job_description_file (str): Path to the job description file.
-        background_info_file (str): Path to the background info file.
-        best_practices_file (str): Path to the best practices file.
+        job_description_file: Flask FileStorage object for job description
+        background_info_file: Flask FileStorage object for background info
+        best_practices_file: Flask FileStorage object for best practices
     
     Returns:
         tuple: Contains the contents of job description, background info, and best practices.
     """
     with tempfile.TemporaryDirectory() as temp_dir:
-        temp_job_path = os.path.join(temp_dir, os.path.basename(job_description_file))
-        temp_background_path = os.path.join(temp_dir, os.path.basename(background_info_file))
-        temp_practices_path = os.path.join(temp_dir, os.path.basename(best_practices_file))
+        temp_job_path = os.path.join(temp_dir, job_description_file.filename)
+        temp_background_path = os.path.join(temp_dir, background_info_file.filename)
+        temp_practices_path = os.path.join(temp_dir, best_practices_file.filename)
         
         try:
-            # Copy uploaded files to temporary directory
-            shutil.copy2(job_description_file, temp_job_path)
-            shutil.copy2(background_info_file, temp_background_path)
-            shutil.copy2(best_practices_file, temp_practices_path)
+            # Save uploaded files to temporary directory
+            job_description_file.save(temp_job_path)
+            background_info_file.save(temp_background_path)
+            best_practices_file.save(temp_practices_path)
             
             # Read contents from temporary files
             job_content = read_file(temp_job_path)
