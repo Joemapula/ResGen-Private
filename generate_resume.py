@@ -238,44 +238,37 @@ def generate_resume(
 # 2.0: Highly unpredictable. Can generate more unusual or creative outputs, but with higher risk of incoherence.
 
 
-def process_uploaded_files(job_description_file, background_info_file, best_practices_file):
+def process_uploaded_files(job_description_path, background_info_path, best_practices_path):
     """
-    Process uploaded files and extract their contents.
-    
+    Reads content from file paths safely.
+
     Args:
-        job_description_file: Flask FileStorage object for job description
-        background_info_file: Flask FileStorage object for background info
-        best_practices_file: Flask FileStorage object for best practices
-    
+        job_description_path (str): Path to job description file.
+        background_info_path (str): Path to background information file.
+        best_practices_path (str): Path to best practices file.
+
     Returns:
-        tuple: Contains the contents of job description, background info, and best practices.
+        tuple: Contents of job description, background info, and best practices.
     """
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_job_path = os.path.join(temp_dir, job_description_file.filename)
-        temp_background_path = os.path.join(temp_dir, background_info_file.filename)
-        temp_practices_path = os.path.join(temp_dir, best_practices_file.filename)
-        
+
+    def read_file_safe(file_path):
+        """Reads a file safely without modifying it."""
+        if not os.path.exists(file_path):
+            logger.error(f"File not found: {file_path}")
+            return ""
+
         try:
-            # Save uploaded files to temporary directory
-            job_description_file.save(temp_job_path)
-            background_info_file.save(temp_background_path)
-            best_practices_file.save(temp_practices_path)
-            
-            # Read contents from temporary files
-            job_content = read_file(temp_job_path)
-            background_content = read_file(temp_background_path)
-            practices_content = read_file(temp_practices_path)
-            
-            # Log the lengths of the contents
-            logger.info(f"Job description length: {len(job_content)} characters")
-            logger.info(f"Background info length: {len(background_content)} characters")
-            logger.info(f"Best practices length: {len(practices_content)} characters")
-            
-            return job_content, background_content, practices_content
-        
+            with open(file_path, 'r', encoding='utf-8') as f:
+                return f.read()
         except Exception as e:
-            logger.error(f"Error processing uploaded files: {str(e)}")
-            return "", "", ""
+            logger.error(f"Error reading file {file_path}: {str(e)}")
+            return ""
+
+    job_content = read_file_safe(job_description_path)
+    background_content = read_file_safe(background_info_path)
+    practices_content = read_file_safe(best_practices_path)
+
+    return job_content, background_content, practices_content
 
 def save_resume(resume_content, output_path):
     """
@@ -304,10 +297,12 @@ def main(job_description_path, background_info_path, best_practices_path, log_le
         # Generate resumes using both providers
         openai_resume = generate_resume(job_description, background_info, best_practices, provider="openai", model="gpt-4o-mini-2024-07-18")
         claude_resume = generate_resume(job_description, background_info, best_practices, provider="anthropic", model="claude-3-5-sonnet-20240620")
-        
+        mistral_resume = generate_resume(job_description, background_info, best_practices, provider="mistral", model="mistral-large-latest")
+
         # Save generated resumes
         save_resume(openai_resume, 'openai_generated_resume.md')
         save_resume(claude_resume, 'claude_generated_resume.md')
+        save_resume(mistral_resume,'mistral_generated_resume.md')
         
         logger.info("Resumes generated and saved successfully!")
         

@@ -1,12 +1,12 @@
-Here's a tailored resume for Joseph Mapula, optimized for the Product Manager position at Zip Co, based on the job description, professional background, and best practices for job applications:
+Sure! Below is a tailored resume in markdown format for the Product Manager position at Zip Co, based on your professional background and the job description provided.
 
 ```markdown
 # Joseph Mapula
 [Your Address]  
-[City, State, Zip]  
+[City, State, ZIP]  
 [Your Email]  
-[Your LinkedIn Profile]  
 [Your Phone Number]  
+[LinkedIn Profile URL]  
 
 ---
 
@@ -14,36 +14,40 @@ Here's a tailored resume for Joseph Mapula, optimized for the Product Manager po
 
 ### Business Rule Solutions - Shuju (Data Consulting)  
 **Consultant (Contract)**  
-*March 2022 - March 2023*  
-- Led data engineering efforts to enhance operational efficiency for a nonprofit client, improving data consistency and user accessibility, resulting in a 15% increase in operational efficiency.  
-- Developed and implemented tools and resources based on metrics and user interviews, treating data as a product to better meet client needs.  
-- Collaborated with cross-functional teams to streamline workflows, enabling a 20% increase in client funding through improved data clarity.
+March 2022 - March 2023  
+- Led data engineering efforts for a nonprofit client focused on upskilling underrepresented communities in technology skills.
+- Collaborated with cross-functional teams to resolve data consistency issues, enhancing the client's operational efficiency by 15%.
+- Developed and implemented data-driven solutions which enabled a 20% increase in client funding.
 
 ### SecurityGate.io (Early-stage, B2B SaaS Startup)  
-**Product Manager**  
-*July 2019 - October 2021*  
-- Managed the product lifecycle for a cybersecurity risk management platform, leading the team to launch 10+ products and securing a Fortune 50 client during Series-A fundraising.  
-- Conducted market research and user interviews to inform product strategy, increasing market reach by 20% through the launch of innovative features.  
-- Established integration partnerships with leading security vendors, enhancing product capabilities and automating processes to reduce customer time spent by 57%.  
-- Revamped product development practices to improve team collaboration and alignment during a period of 3x headcount growth.
+**Product Manager (Full-Product & Lifecycle)**  
+July 2019 - October 2021  
+- Spearheaded the development of 10+ products from conception to launch, securing a Fortune 50 client during Series-A fundraising.
+- Revamped product development practices to align teams, reducing friction and facilitating a 300% client base expansion.
+- Established integration partnerships with leading security vendors to enhance product capabilities and market reach by 20%.
 
 ### How To College: First Gen  
 **Co-founder & Host**  
-*February 2020 - November 2020*  
-- Launched a podcast and resource hub aimed at empowering first-generation college students, achieving over 2,500 downloads and building a community of 600 followers.  
-- Coordinated a cross-functional team to develop a roadmap and content focused on addressing user pain points for first-generation students.
+February 2020 - November 2020  
+- Co-founded a podcast aimed at empowering first-generation college students, achieving over 2,500 downloads and building a community of 600 followers.
+- Coordinated a cross-functional team using Agile methodologies to deliver impactful content and resources.
 
 ### Integrity (Family Business)  
 **Manager**  
-*February 2018 - July 2019*  
-- Developed compliance procedures for a family-owned concrete batch plant, ensuring operational efficiency and reducing reliance on contracting services by $3,000/month.  
-- Led cross-training initiatives to minimize the impact of employee turnover in a high-turnover industry.
+February 2018 - July 2019  
+- Developed compliance procedures for a family-owned concrete batch plant, leading to a $3,000/month cost reduction.
+- Collaborated with a diverse team to implement cross-training plans, minimizing attrition impacts in a high-turnover industry.
 
 ### Booz Allen Hamilton  
 **Senior Consultant; Finance and Economic Development Team**  
-*July 2017 - February 2018*  
-- Acted as de facto Product Manager for a B2B POS web application, driving user-centered product development through extensive user research.  
-- Successfully managed software transitions for 10+ government agencies, ensuring successful adoption and achieving a 4.8/5 feedback rating for client training sessions.
+July 2017 - February 2018  
+- Functioned as a de facto Product Manager for a B2B POS web app, driving user-centered product development through extensive user research.
+- Improved reporting speed from 3 days to 0.5 days while enhancing accuracy, ensuring successful software adoption across 10+ government agencies.
+
+### Goodwill Industries International  
+**Special Projects and Business Development Intern**  
+May 2014 - August 2014  
+- Developed an inventory visualization dashboard that improved data management, protecting high-cost goods worth over $500,000.
 
 ---
 
@@ -51,38 +55,34 @@ Here's a tailored resume for Joseph Mapula, optimized for the Product Manager po
 
 **Bachelor of Arts in [Your Major]**  
 [Your University], [City, State]  
-*Graduated: [Year]*  
+[Month, Year] - [Month, Year]
 
 ---
 
 ## Skills
 
-- **Product Management**: Product lifecycle management, user research, data analysis, project management, cross-functional collaboration.  
-- **Technical Skills**: Data engineering, automation tools (Zapier, Salesforce), market research methodologies.  
-- **Soft Skills**: Strong analytical skills, excellent communication, stakeholder management, adaptability.
+- **Product Management:** Full product lifecycle management, user research, data analysis, product strategy development.
+- **Technical Skills:** Data engineering, automation tools (Zapier, Salesforce), integration partnerships.
+- **Analytical Skills:** Strong data analysis and experimentation capabilities, experience in A/B testing and metrics-driven decision-making.
+- **Communication:** Excellent project management and stakeholder engagement, adept at conveying complex technical information to diverse audiences.
 
 ---
 
 ## Additional Sections
 
 ### Certifications
-- [Any relevant certifications related to product management or data analytics, if applicable]
+- [Relevant Certification or Course, if applicable]
 
-### Projects
-- **Business Impact Assessment Tool**: Developed a tool to assess impacts of cybersecurity events, expanding market reach and providing actionable insights for clients.  
-- **Data Organization Redesign**: Led initiatives to improve data management processes for a nonprofit client, increasing operational efficiency and funding.
+### Volunteer Experience
+- [Any relevant volunteer work that demonstrates skills or commitment to community impact]
 
----
-
-## References
-
-Available upon request.
+### Interests
+- Interest in AI and how it shapes customer support interactions.
 ```
 
-### Key Points:
-- The resume is structured to highlight relevant experiences that align with the job requirements for a Product Manager at Zip Co.
-- The use of metrics and specific accomplishments demonstrates the impact Joseph has made in previous roles.
-- The resume emphasizes skills that are crucial for the position, such as user research, data analysis, and cross-functional collaboration.
-- Additional sections can be tailored based on Joseph's personal achievements or certifications. 
+### Key Highlights:
+- The resume emphasizes relevant experiences and accomplishments that align with the job description for the Product Manager position at Zip Co.
+- It showcases skills in product management, data analysis, stakeholder engagement, and user-centric design, which are all critical for the role.
+- The structure is concise and easy to read, ensuring that key information stands out to hiring managers. 
 
-Feel free to personalize the contact information, education, and any additional sections as needed.
+Feel free to customize the sections such as contact details, education, certifications, and any additional sections relevant to your background!
