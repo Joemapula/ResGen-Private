@@ -381,9 +381,13 @@ def save_resume(resume_content, job_title, company, model, format="md"):
 def main(job_description_path, background_info_path, best_practices_path, selected_models=None, log_level=logging.INFO):
     """
     Runs resume generation only for the selected AI models.
-    
+
     Args:
-        selected_models (list): List of models to run (e.g., ["openai", "mistral"]).
+        job_description_path (str): Path to the job description file.
+        background_info_path (str): Path to the background information file.
+        best_practices_path (str): Path to the best practices file.
+        selected_models (list, optional): List of models to run (e.g., ["openai", "mistral"]).
+        log_level (int, optional): Logging level.
     """
     logging.getLogger().setLevel(log_level)
 
@@ -391,36 +395,42 @@ def main(job_description_path, background_info_path, best_practices_path, select
     if selected_models is None:
         selected_models = ["openai", "anthropic", "mistral"]
 
-    job_description, background_info, best_practices = process_uploaded_files(
-        job_description_path, background_info_path, best_practices_path
-    )
+    try:
+        job_description, background_info, best_practices = process_uploaded_files(
+            job_description_path, background_info_path, best_practices_path
+        )
 
-    job_title, company_name = extract_job_title_and_company_regex(job_description)
+        job_title, company_name = extract_job_title_and_company_regex(job_description)
 
-    if "openai" in selected_models:
-        try:
-            openai_resume = generate_resume(job_description, background_info, best_practices, provider="openai", model="gpt-4o-mini-2024-07-18")
-            save_resume(openai_resume, job_title, company_name, "gpt-4o-mini-2024-07-18", format="md")
-        except Exception as e:
-            logger.error(f"Failed to generate/save OpenAI resume: {e}")
+        if "openai" in selected_models:
+            try:
+                openai_resume = generate_resume(
+                    job_description, background_info, best_practices, provider="openai", model="gpt-4o"
+                )
+                save_resume(openai_resume, job_title, company_name, "gpt-4o", format="md")
+            except Exception as e:
+                logger.error(f"Failed to generate/save OpenAI resume: {e}")
 
-    if "anthropic" in selected_models:
-        try:
-            claude_resume = generate_resume(job_description, background_info, best_practices, provider="anthropic", model="claude-3-5-sonnet-20240620")
-            save_resume(claude_resume, job_title, company_name, "claude-3-5-haiku-20241022", format="md")
-        except Exception as e:
-            logger.error(f"Failed to generate/save Anthropic resume: {e}")
+        if "anthropic" in selected_models:
+            try:
+                claude_resume = generate_resume(
+                    job_description, background_info, best_practices, provider="anthropic", model="claude-3-sonnet"
+                )
+                save_resume(claude_resume, job_title, company_name, "claude-3-sonnet", format="md")
+            except Exception as e:
+                logger.error(f"Failed to generate/save Anthropic resume: {e}")
 
-    if "mistral" in selected_models:
-        try:
-            mistral_resume = generate_resume(job_description, background_info, best_practices, provider="mistral", model="mistral-large-latest")
-            save_resume(mistral_resume, job_title, company_name, "mistral-small-latest", format="md")
-        except Exception as e:
-            logger.error(f"Failed to generate/save Mistral resume: {e}")
+        if "mistral" in selected_models:
+            try:
+                mistral_resume = generate_resume(
+                    job_description, background_info, best_practices, provider="mistral", model="mistral-large"
+                )
+                save_resume(mistral_resume, job_title, company_name, "mistral-large", format="md")
+            except Exception as e:
+                logger.error(f"Failed to generate/save Mistral resume: {e}")
 
-                
         logger.info("Resumes generated and saved successfully!")
-        
+
     except FileNotFoundError as e:
         logger.error(f"File not found: {str(e)}")
     except ValueError as e:
@@ -432,13 +442,9 @@ def main(job_description_path, background_info_path, best_practices_path, select
     except openai.APIError as e:
         logger.error(f"OpenAI API error: {str(e)}")
     except openai.APIConnectionError as e:
-        #Handle connection error here
         logger.error(f"Failed to connect to OpenAI API: {e}")
-        pass
     except openai.RateLimitError as e:
-        #Handle rate limit error (we recommend using exponential backoff)
         logger.error(f"OpenAI API request exceeded rate limit: {e}")
-        pass
     except Exception as e:
         logger.error(f"An unexpected error occurred: {str(e)}")
 
