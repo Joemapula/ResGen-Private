@@ -378,46 +378,45 @@ def save_resume(resume_content, job_title, company, model, format="md"):
         return None
 
 
-def main(job_description_path, background_info_path, best_practices_path, log_level=logging.INFO):
-    # Set the log level
+def main(job_description_path, background_info_path, best_practices_path, selected_models=None, log_level=logging.INFO):
+    """
+    Runs resume generation only for the selected AI models.
+    
+    Args:
+        selected_models (list): List of models to run (e.g., ["openai", "mistral"]).
+    """
     logging.getLogger().setLevel(log_level)
-    try:
-        # Open files and process them
-        with open(job_description_path, 'rb') as job_file, \
-             open(background_info_path, 'rb') as background_file, \
-             open(best_practices_path, 'rb') as practices_file:
-            
-            job_description, background_info, best_practices = process_uploaded_files(
-                args.job_description, args.background_info, args.best_practices
-            )
-        
-        # Extract job title & company from job description
-        job_title, company_name = extract_job_title_and_company_regex(job_description)
 
-        # Use default values if extraction fails
-        if not job_title:
-            job_title = "Unknown_Job_Title"
-        if not company_name:
-            company_name = "Unknown_Company"
+    # Default: Run all models if none are selected
+    if selected_models is None:
+        selected_models = ["openai", "anthropic", "mistral"]
 
+    job_description, background_info, best_practices = process_uploaded_files(
+        job_description_path, background_info_path, best_practices_path
+    )
+
+    job_title, company_name = extract_job_title_and_company_regex(job_description)
+
+    if "openai" in selected_models:
         try:
             openai_resume = generate_resume(job_description, background_info, best_practices, provider="openai", model="gpt-4o-mini-2024-07-18")
             save_resume(openai_resume, job_title, company_name, "gpt-4o-mini-2024-07-18", format="md")
         except Exception as e:
             logger.error(f"Failed to generate/save OpenAI resume: {e}")
 
+    if "anthropic" in selected_models:
         try:
             claude_resume = generate_resume(job_description, background_info, best_practices, provider="anthropic", model="claude-3-5-sonnet-20240620")
             save_resume(claude_resume, job_title, company_name, "claude-3-5-sonnet-20240620", format="md")
         except Exception as e:
             logger.error(f"Failed to generate/save Anthropic resume: {e}")
 
+    if "mistral" in selected_models:
         try:
             mistral_resume = generate_resume(job_description, background_info, best_practices, provider="mistral", model="mistral-large-latest")
             save_resume(mistral_resume, job_title, company_name, "mistral-large-latest", format="md")
         except Exception as e:
             logger.error(f"Failed to generate/save Mistral resume: {e}")
-
 
                 
         logger.info("Resumes generated and saved successfully!")
@@ -449,13 +448,16 @@ if __name__ == "__main__":
     parser.add_argument("job_description", help="Path to the job description file")
     parser.add_argument("background_info", help="Path to the background information file")
     parser.add_argument("best_practices", help="Path to the best practices file")
+    parser.add_argument("--models", nargs="+", choices=['openai', 'anthropic', 'mistral'], 
+                        help="Specify which models to run (default: all)")
     parser.add_argument("--log-level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                         default='INFO', help="Set the logging level")
-    
+
     args = parser.parse_args()
-    
     log_level = getattr(logging, args.log_level)
-    main(args.job_description, args.background_info, args.best_practices, log_level)
+    
+    # Pass selected models to main()
+    main(args.job_description, args.background_info, args.best_practices, selected_models=args.models, log_level=log_level)
 
     # TODO: Create a user interface for inputting information and selecting options
     # TODO: Add a feedback mechanism for iterating on the generated resumes
