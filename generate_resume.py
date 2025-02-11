@@ -11,6 +11,8 @@ from docx import Document
 import argparse
 import tempfile
 import shutil
+import re
+import json
 # Import the logging module, which provides a flexible framework for generating log messages in Python
 import logging
 # Configure the basic settings for the logging system
@@ -82,6 +84,88 @@ except Exception as e:
     logger.error(f"Error creating API clients: {e}")
     raise
 
+# Define folders
+UPLOAD_FOLDER = 'uploads'
+TEMP_FOLDER = 'temp'
+OUTPUT_FOLDER = 'outputs'
+LOG_FOLDER = 'logs'
+
+# Ensure necessary folders exist
+for folder in [UPLOAD_FOLDER, TEMP_FOLDER, OUTPUT_FOLDER, LOG_FOLDER]:
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+        logging.info(f"Created folder: {folder}")
+
+def generate_unique_filename(job_title, company, model, extension=".md"):
+    """Generates a unique filename using job title, company, model, and timestamp."""
+    timestamp = time.strftime("%Y-%m-%d_%H%M%S")
+    safe_job_title = secure_filename(job_title.replace(" ", "_").lower())
+    safe_company = secure_filename(company.replace(" ", "_").lower())
+    filename = f"resume_{safe_company}_{safe_job_title}_{model}_{timestamp}{extension}"
+    return os.path.join(OUTPUT_FOLDER, filename)
+
+
+def extract_job_title_and_company_regex(text):
+    # Try to capture a job title based on common phrases
+    title_pattern = re.search(r'(?i)(?:title|position):\s*(.*)', text)
+    
+    # Try to capture a company name based on common phrases
+    company_pattern = re.search(r'(?i)(?:company|employer|organization):\s*(.*)', text)
+
+    job_title = title_pattern.group(1).strip() if title_pattern else None
+    company_name = company_pattern.group(1).strip() if company_pattern else None
+
+    return job_title, company_name
+
+def extract_job_details_with_llm(text):
+    """Use an LLM to extract the job title and company from a description."""
+    prompt = f"""
+    Extract the job title and company name from the following job description:
+    
+    {text}
+
+    Respond in JSON format:
+    {{"job_title": "<job title>", "company": "<company name>"}}
+    """
+
+    response = openai_client.chat.completions.create(
+        model="mistral-small",  # Faster & cheaper model
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=100,
+        temperature=0  # Reduce creativity for precise extraction
+    )
+
+    result = response.choices[0].message.content.strip()
+
+    # Safely parse JSON response
+    try:
+        parsed_result = json.loads(result)
+        return parsed_result
+    except json.JSONDecodeError:
+        logging.error(f"Failed to parse LLM response: {result}")
+        return {"job_title": "Unknown_Job_Title", "company": "Unknown_Company"}
+
+def get_job_title_and_company(text):
+    job_title, company_name = extract_job_title_and_company_regex(text)
+
+    if not job_title or not company_name:
+        logging.info("Falling back to LLM for job details extraction.")
+        llm_result = extract_job_details_with_llm(text)
+        job_title, company_name = llm_result.get("job_title"), llm_result.get("company")
+
+    return job_title, company_name or "Unknown Company"
+
+
+def cleanup_temp_folder():
+    """Deletes temporary files after processing."""
+    try:
+        shutil.rmtree(TEMP_FOLDER)
+        os.makedirs(TEMP_FOLDER)  # Recreate empty temp folder
+        logging.info("Temporary folder cleaned up.")
+    except Exception as e:
+        logging.error(f"Error cleaning temp folder: {e}")
+
+        
 def read_file(file_path):
     """
     Read content from various file types.
@@ -270,16 +354,26 @@ def process_uploaded_files(job_description_path, background_info_path, best_prac
 
     return job_content, background_content, practices_content
 
-def save_resume(resume_content, output_path):
-    """
-    Save the generated resume to a file.
+def save_resume(resume_content, job_title, company, model, format="md"):
+    """Saves the generated resume in the appropriate format."""
+    format_mapping = {
+        "md": ".md",
+        "docx": ".docx",
+        "pdf": ".pdf"
+    }
     
-    Args:
-        resume_content (str): The content of the generated resume.
-        output_path (str): Path where the resume should be saved.
-    """
-    with open(output_path, 'w', encoding='utf-8') as file:
-        file.write(resume_content)
+    extension = format_mapping.get(format, ".md")
+    output_path = generate_unique_filename(job_title, company, model, extension)
+    
+    try:
+        with open(output_path, "w", encoding="utf-8") as file:
+            file.write(resume_content)
+        logging.info(f"Resume saved successfully: {output_path}")
+        return output_path
+    except Exception as e:
+        logging.error(f"Error saving resume ({output_path}): {e}")
+        return None
+
 
 def main(job_description_path, background_info_path, best_practices_path, log_level=logging.INFO):
     # Set the log level
@@ -294,16 +388,35 @@ def main(job_description_path, background_info_path, best_practices_path, log_le
                 args.job_description, args.background_info, args.best_practices
             )
         
-        # Generate resumes using both providers
-        openai_resume = generate_resume(job_description, background_info, best_practices, provider="openai", model="gpt-4o-mini-2024-07-18")
-        claude_resume = generate_resume(job_description, background_info, best_practices, provider="anthropic", model="claude-3-5-sonnet-20240620")
-        mistral_resume = generate_resume(job_description, background_info, best_practices, provider="mistral", model="mistral-large-latest")
+        # Extract job title & company from job description
+        job_title, company_name = extract_job_title_and_company_regex(job_description)
 
-        # Save generated resumes
-        save_resume(openai_resume, 'openai_generated_resume.md')
-        save_resume(claude_resume, 'claude_generated_resume.md')
-        save_resume(mistral_resume,'mistral_generated_resume.md')
-        
+        # Use default values if extraction fails
+        if not job_title:
+            job_title = "Unknown_Job_Title"
+        if not company_name:
+            company_name = "Unknown_Company"
+
+        try:
+            openai_resume = generate_resume(job_description, background_info, best_practices, provider="openai", model="gpt-4o-mini-2024-07-18")
+            save_resume(openai_resume, job_title, company_name, "gpt-4o-mini-2024-07-18", format="md")
+        except Exception as e:
+            logger.error(f"Failed to generate/save OpenAI resume: {e}")
+
+        try:
+            claude_resume = generate_resume(job_description, background_info, best_practices, provider="anthropic", model="claude-3-5-sonnet-20240620")
+            save_resume(claude_resume, job_title, company_name, "claude-3-5-sonnet-20240620", format="md")
+        except Exception as e:
+            logger.error(f"Failed to generate/save Anthropic resume: {e}")
+
+        try:
+            mistral_resume = generate_resume(job_description, background_info, best_practices, provider="mistral", model="mistral-large-latest")
+            save_resume(mistral_resume, job_title, company_name, "mistral-large-latest", format="md")
+        except Exception as e:
+            logger.error(f"Failed to generate/save Mistral resume: {e}")
+
+
+                
         logger.info("Resumes generated and saved successfully!")
         
     except FileNotFoundError as e:

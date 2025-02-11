@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, send_file, jsonify
 import os
 import shutil
 from werkzeug.utils import secure_filename
-from generate_resume import generate_resume, process_uploaded_files
+from generate_resume import extract_job_title_and_company_regex, save_resume, cleanup_temp_folder
 
 app = Flask(__name__)
 
@@ -17,6 +17,15 @@ for folder in [UPLOAD_FOLDER, TEMP_FOLDER]:
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['TEMP_FOLDER'] = TEMP_FOLDER
+
+# Extract job title & company from job description
+job_title, company_name = extract_job_title_and_company_regex(job_content)
+
+# Use defaults if extraction fails
+if not job_title:
+    job_title = "Unknown Job Title"
+if not company_name:
+    company_name = "Unknown Company"
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -65,12 +74,13 @@ def index():
             return jsonify({"error": f"Resume generation failed: {str(e)}"}), 500
 
         # Save the generated resume
-        resume_path = os.path.join(app.config['UPLOAD_FOLDER'], 'generated_resume.md')
+        resume_path = save_resume(resume, job_title, company_name, "mistral-large", format="md")
         with open(resume_path, 'w', encoding='utf-8') as f:
             f.write(resume)
 
         # Clean up temp files after processing
-        shutil.rmtree(temp_dir, ignore_errors=True)
+        cleanup_temp_folder()
+
 
         return send_file(resume_path, as_attachment=True)
 
