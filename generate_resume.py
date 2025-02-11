@@ -212,7 +212,7 @@ def generate_resume(
     background_info: str,
     best_practices: str,
     provider: str = "mistral",
-    model: str = "mistral-large-latest",
+    model: str = "mistral-small-latest",
     custom_prompt: Optional[str] = None,
     max_tokens: int = 4000
 ) -> str:    
@@ -407,14 +407,14 @@ def main(job_description_path, background_info_path, best_practices_path, select
     if "anthropic" in selected_models:
         try:
             claude_resume = generate_resume(job_description, background_info, best_practices, provider="anthropic", model="claude-3-5-sonnet-20240620")
-            save_resume(claude_resume, job_title, company_name, "claude-3-5-sonnet-20240620", format="md")
+            save_resume(claude_resume, job_title, company_name, "claude-3-5-haiku-20241022", format="md")
         except Exception as e:
             logger.error(f"Failed to generate/save Anthropic resume: {e}")
 
     if "mistral" in selected_models:
         try:
             mistral_resume = generate_resume(job_description, background_info, best_practices, provider="mistral", model="mistral-large-latest")
-            save_resume(mistral_resume, job_title, company_name, "mistral-large-latest", format="md")
+            save_resume(mistral_resume, job_title, company_name, "mistral-small-latest", format="md")
         except Exception as e:
             logger.error(f"Failed to generate/save Mistral resume: {e}")
 
