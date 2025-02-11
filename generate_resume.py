@@ -101,23 +101,24 @@ for folder in [UPLOAD_FOLDER, TEMP_FOLDER, OUTPUT_FOLDER, LOG_FOLDER]:
 def generate_unique_filename(job_title, company, model, extension=".md"):
     """Generates a unique filename using job title, company, model, and timestamp."""
     timestamp = time.strftime("%Y-%m-%d_%H%M%S")
-    safe_job_title = secure_filename(job_title.replace(" ", "_").lower())
-    safe_company = secure_filename(company.replace(" ", "_").lower())
+
+    safe_job_title = secure_filename((job_title or "Unknown_Job_Title").replace(" ", "_").lower())
+    safe_company = secure_filename((company or "Unknown_Company").replace(" ", "_").lower())
+
     filename = f"resume_{safe_company}_{safe_job_title}_{model}_{timestamp}{extension}"
+    
     return os.path.join(OUTPUT_FOLDER, filename)
 
 
 def extract_job_title_and_company_regex(text):
-    # Try to capture a job title based on common phrases
     title_pattern = re.search(r'(?i)(?:title|position):\s*(.*)', text)
-    
-    # Try to capture a company name based on common phrases
     company_pattern = re.search(r'(?i)(?:company|employer|organization):\s*(.*)', text)
 
-    job_title = title_pattern.group(1).strip() if title_pattern else None
-    company_name = company_pattern.group(1).strip() if company_pattern else None
+    job_title = title_pattern.group(1).strip() if title_pattern else "Unknown_Job_Title"
+    company_name = company_pattern.group(1).strip() if company_pattern else "Unknown_Company"
 
     return job_title, company_name
+
 
 def extract_job_details_with_llm(text):
     """Use an LLM to extract the job title and company from a description."""
