@@ -131,8 +131,8 @@ def extract_job_details_with_llm(text):
     {{"job_title": "<job title>", "company": "<company name>"}}
     """
 
-    response = openai_client.chat.completions.create(
-        model="mistral-small",  # Faster & cheaper model
+    response = mistral_client.chat.completions.create(
+        model="mistral-large-latest",  # Faster & cheaper model
         messages=[{"role": "user", "content": prompt}],
         max_tokens=100,
         temperature=0  # Reduce creativity for precise extraction
