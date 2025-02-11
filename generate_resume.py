@@ -10,12 +10,16 @@ import PyPDF2
 from docx import Document
 import argparse
 import tempfile
+from werkzeug.utils import secure_filename
 import shutil
+import time
+import re
+import json
 # Import the logging module, which provides a flexible framework for generating log messages in Python
 import logging
 # Configure the basic settings for the logging system
 logging.basicConfig(
-    level=logging.INFO,  # Set the root logger's level to INFO
+    level=logging.DEBUG,  # Set the root logger's level 
     # This means it will capture all logs of severity INFO and above (INFO, WARNING, ERROR, CRITICAL)
     # Logs below this level (like DEBUG) will be ignored unless explicitly set for specific loggers
     
@@ -82,6 +86,89 @@ except Exception as e:
     logger.error(f"Error creating API clients: {e}")
     raise
 
+# Define folders
+UPLOAD_FOLDER = 'uploads'
+TEMP_FOLDER = 'temp'
+OUTPUT_FOLDER = 'outputs'
+LOG_FOLDER = 'logs'
+
+# Ensure necessary folders exist
+for folder in [UPLOAD_FOLDER, TEMP_FOLDER, OUTPUT_FOLDER, LOG_FOLDER]:
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+        logging.info(f"Created folder: {folder}")
+
+def generate_unique_filename(job_title, company, model, extension=".md"):
+    """Generates a unique filename using job title, company, model, and timestamp."""
+    timestamp = time.strftime("%Y-%m-%d_%H%M%S")
+
+    safe_job_title = secure_filename((job_title or "Unknown_Job_Title").replace(" ", "_").lower())
+    safe_company = secure_filename((company or "Unknown_Company").replace(" ", "_").lower())
+
+    filename = f"resume_{safe_company}_{safe_job_title}_{model}_{timestamp}{extension}"
+    
+    return os.path.join(OUTPUT_FOLDER, filename)
+
+
+def extract_job_title_and_company_regex(text):
+    title_pattern = re.search(r'(?i)(?:title|position):\s*(.*)', text)
+    company_pattern = re.search(r'(?i)(?:company|employer|organization):\s*(.*)', text)
+
+    job_title = title_pattern.group(1).strip() if title_pattern else "Unknown_Job_Title"
+    company_name = company_pattern.group(1).strip() if company_pattern else "Unknown_Company"
+
+    return job_title, company_name
+
+
+def extract_job_details_with_llm(text):
+    """Use an LLM to extract the job title and company from a description."""
+    prompt = f"""
+    Extract the job title and company name from the following job description:
+    
+    {text}
+
+    Respond in JSON format:
+    {{"job_title": "<job title>", "company": "<company name>"}}
+    """
+
+    response = openai_client.chat.completions.create(
+        model="mistral-small",  # Faster & cheaper model
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=100,
+        temperature=0  # Reduce creativity for precise extraction
+    )
+
+    result = response.choices[0].message.content.strip()
+
+    # Safely parse JSON response
+    try:
+        parsed_result = json.loads(result)
+        return parsed_result
+    except json.JSONDecodeError:
+        logging.error(f"Failed to parse LLM response: {result}")
+        return {"job_title": "Unknown_Job_Title", "company": "Unknown_Company"}
+
+def get_job_title_and_company(text):
+    job_title, company_name = extract_job_title_and_company_regex(text)
+
+    if not job_title or not company_name:
+        logging.info("Falling back to LLM for job details extraction.")
+        llm_result = extract_job_details_with_llm(text)
+        job_title, company_name = llm_result.get("job_title"), llm_result.get("company")
+
+    return job_title, company_name or "Unknown Company"
+
+
+def cleanup_temp_folder():
+    """Deletes temporary files after processing."""
+    try:
+        shutil.rmtree(TEMP_FOLDER)
+        os.makedirs(TEMP_FOLDER)  # Recreate empty temp folder
+        logging.info("Temporary folder cleaned up.")
+    except Exception as e:
+        logging.error(f"Error cleaning temp folder: {e}")
+
+        
 def read_file(file_path):
     """
     Read content from various file types.
@@ -96,11 +183,18 @@ def read_file(file_path):
     
     try:
         if file_extension.lower() == '.pdf':
-            # Implementation for PDF files
-            pass
+            with open(file_path, 'rb') as file:
+                reader = PyPDF2.PdfFileReader(file)
+                content = ""
+                for page_num in range(reader.numPages):
+                    content += reader.getPage(page_num).extract_text()
+            logger.info(f"Successfully read PDF file: {file_path}")
+            return content
         elif file_extension.lower() in ['.docx', '.doc']:
-            # Implementation for Word documents
-            pass
+            doc = Document(file_path)
+            content = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+            logger.info(f"Successfully read Word document: {file_path}")
+            return content
         elif file_extension.lower() in ['.txt', '.md']:
             with open(file_path, 'r', encoding='utf-8') as file:
                 content = file.read()
@@ -207,15 +301,19 @@ def generate_resume(
         # Extract and return the generated content from the API response
         return message.content[0].text.strip()
     elif provider == "mistral":
-        # Create a completion using Mistral's API
-        response = mistral_client.generate(
+        # Create a chat completion using Mistral's API
+        response = mistral_client.chat.complete(
             model=model,
-            prompt=prompt,
-            max_tokens=max_tokens,
-            temperature=0.7  # Control randomness (0.7 is moderately creative)
+            messages=[{
+                "role": "user",
+                "content": prompt
+            }],
+            temperature=0.7,  # Control randomness (0.7 is moderately creative)
+            max_tokens=max_tokens
         )
+
         # Extract and return the generated content from the API response
-        return response["generated_text"].strip()
+        return response.choices[0].message.content.strip()
     else:
         # Raise an error if an unsupported provider is specified
         raise ValueError("Unsupported provider. Please use 'openai', 'anthropic', or 'mistral'.")
@@ -227,77 +325,100 @@ def generate_resume(
 # 2.0: Highly unpredictable. Can generate more unusual or creative outputs, but with higher risk of incoherence.
 
 
-def process_uploaded_files(job_description_file, background_info_file, best_practices_file):
+def process_uploaded_files(job_description_path, background_info_path, best_practices_path):
     """
-    Process uploaded files and extract their contents.
-    
+    Reads content from file paths safely.
+
     Args:
-        job_description_file (str): Path to the job description file.
-        background_info_file (str): Path to the background info file.
-        best_practices_file (str): Path to the best practices file.
-    
+        job_description_path (str): Path to job description file.
+        background_info_path (str): Path to background information file.
+        best_practices_path (str): Path to best practices file.
+
     Returns:
-        tuple: Contains the contents of job description, background info, and best practices.
+        tuple: Contents of job description, background info, and best practices.
     """
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_job_path = os.path.join(temp_dir, os.path.basename(job_description_file))
-        temp_background_path = os.path.join(temp_dir, os.path.basename(background_info_file))
-        temp_practices_path = os.path.join(temp_dir, os.path.basename(best_practices_file))
-        
-        try:
-            # Copy uploaded files to temporary directory
-            shutil.copy2(job_description_file, temp_job_path)
-            shutil.copy2(background_info_file, temp_background_path)
-            shutil.copy2(best_practices_file, temp_practices_path)
-            
-            # Read contents from temporary files
-            job_content = read_file(temp_job_path)
-            background_content = read_file(temp_background_path)
-            practices_content = read_file(temp_practices_path)
-            
-            # Log the lengths of the contents
-            logger.info(f"Job description length: {len(job_content)} characters")
-            logger.info(f"Background info length: {len(background_content)} characters")
-            logger.info(f"Best practices length: {len(practices_content)} characters")
-            
-            return job_content, background_content, practices_content
-        
-        except Exception as e:
-            logger.error(f"Error processing uploaded files: {str(e)}")
-            return "", "", ""
 
-def save_resume(resume_content, output_path):
+    def read_file_safe(file_path):
+        """Reads a file safely without modifying it."""
+        if not os.path.exists(file_path):
+            logger.error(f"File not found: {file_path}")
+            return ""
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception as e:
+            logger.error(f"Error reading file {file_path}: {str(e)}")
+            return ""
+
+    job_content = read_file_safe(job_description_path)
+    background_content = read_file_safe(background_info_path)
+    practices_content = read_file_safe(best_practices_path)
+
+    return job_content, background_content, practices_content
+
+def save_resume(resume_content, job_title, company, model, format="md"):
+    """Saves the generated resume in the appropriate format."""
+    format_mapping = {
+        "md": ".md",
+        "docx": ".docx",
+        "pdf": ".pdf"
+    }
+    
+    extension = format_mapping.get(format, ".md")
+    output_path = generate_unique_filename(job_title, company, model, extension)
+    
+    try:
+        with open(output_path, "w", encoding="utf-8") as file:
+            file.write(resume_content)
+        logging.info(f"Resume saved successfully: {output_path}")
+        return output_path
+    except Exception as e:
+        logging.error(f"Error saving resume ({output_path}): {e}")
+        return None
+
+
+def main(job_description_path, background_info_path, best_practices_path, selected_models=None, log_level=logging.INFO):
     """
-    Save the generated resume to a file.
+    Runs resume generation only for the selected AI models.
     
     Args:
-        resume_content (str): The content of the generated resume.
-        output_path (str): Path where the resume should be saved.
+        selected_models (list): List of models to run (e.g., ["openai", "mistral"]).
     """
-    with open(output_path, 'w', encoding='utf-8') as file:
-        file.write(resume_content)
-
-def main(job_description_path, background_info_path, best_practices_path, log_level=logging.INFO):
-    # Set the log level
     logging.getLogger().setLevel(log_level)
-    try:
-        # Open files and process them
-        with open(job_description_path, 'rb') as job_file, \
-             open(background_info_path, 'rb') as background_file, \
-             open(best_practices_path, 'rb') as practices_file:
-            
-            job_description, background_info, best_practices = process_uploaded_files(
-                args.job_description, args.background_info, args.best_practices
-            )
-        
-        # Generate resumes using both providers
-        openai_resume = generate_resume(job_description, background_info, best_practices, provider="openai", model="gpt-4o-mini-2024-07-18")
-        claude_resume = generate_resume(job_description, background_info, best_practices, provider="anthropic", model="claude-3-5-sonnet-20240620")
-        
-        # Save generated resumes
-        save_resume(openai_resume, 'openai_generated_resume.md')
-        save_resume(claude_resume, 'claude_generated_resume.md')
-        
+
+    # Default: Run all models if none are selected
+    if selected_models is None:
+        selected_models = ["openai", "anthropic", "mistral"]
+
+    job_description, background_info, best_practices = process_uploaded_files(
+        job_description_path, background_info_path, best_practices_path
+    )
+
+    job_title, company_name = extract_job_title_and_company_regex(job_description)
+
+    if "openai" in selected_models:
+        try:
+            openai_resume = generate_resume(job_description, background_info, best_practices, provider="openai", model="gpt-4o-mini-2024-07-18")
+            save_resume(openai_resume, job_title, company_name, "gpt-4o-mini-2024-07-18", format="md")
+        except Exception as e:
+            logger.error(f"Failed to generate/save OpenAI resume: {e}")
+
+    if "anthropic" in selected_models:
+        try:
+            claude_resume = generate_resume(job_description, background_info, best_practices, provider="anthropic", model="claude-3-5-sonnet-20240620")
+            save_resume(claude_resume, job_title, company_name, "claude-3-5-sonnet-20240620", format="md")
+        except Exception as e:
+            logger.error(f"Failed to generate/save Anthropic resume: {e}")
+
+    if "mistral" in selected_models:
+        try:
+            mistral_resume = generate_resume(job_description, background_info, best_practices, provider="mistral", model="mistral-large-latest")
+            save_resume(mistral_resume, job_title, company_name, "mistral-large-latest", format="md")
+        except Exception as e:
+            logger.error(f"Failed to generate/save Mistral resume: {e}")
+
+                
         logger.info("Resumes generated and saved successfully!")
         
     except FileNotFoundError as e:
@@ -327,13 +448,16 @@ if __name__ == "__main__":
     parser.add_argument("job_description", help="Path to the job description file")
     parser.add_argument("background_info", help="Path to the background information file")
     parser.add_argument("best_practices", help="Path to the best practices file")
+    parser.add_argument("--models", nargs="+", choices=['openai', 'anthropic', 'mistral'], 
+                        help="Specify which models to run (default: all)")
     parser.add_argument("--log-level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                         default='INFO', help="Set the logging level")
-    
+
     args = parser.parse_args()
-    
     log_level = getattr(logging, args.log_level)
-    main(args.job_description, args.background_info, args.best_practices, log_level)
+    
+    # Pass selected models to main()
+    main(args.job_description, args.background_info, args.best_practices, selected_models=args.models, log_level=log_level)
 
     # TODO: Create a user interface for inputting information and selecting options
     # TODO: Add a feedback mechanism for iterating on the generated resumes
