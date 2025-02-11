@@ -10,7 +10,9 @@ import PyPDF2
 from docx import Document
 import argparse
 import tempfile
+from werkzeug.utils import secure_filename
 import shutil
+import time
 import re
 import json
 # Import the logging module, which provides a flexible framework for generating log messages in Python
