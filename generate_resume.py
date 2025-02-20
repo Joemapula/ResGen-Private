@@ -11,10 +11,12 @@ from docx import Document
 import argparse
 import tempfile
 from werkzeug.utils import secure_filename
+import hashlib
 import shutil
 import time
 import re
 import json
+from typing import Dict
 # Import the logging module, which provides a flexible framework for generating log messages in Python
 import logging
 # Configure the basic settings for the logging system
@@ -97,6 +99,112 @@ for folder in [UPLOAD_FOLDER, TEMP_FOLDER, OUTPUT_FOLDER, LOG_FOLDER]:
     if not os.path.exists(folder):
         os.makedirs(folder)
         logging.info(f"Created folder: {folder}")
+
+
+# Define Knowledge Base storage file
+KNOWLEDGE_BASE_FILE = "knowledge_base.json"
+
+# Ensure Knowledge Base exists
+def initialize_knowledge_base():
+    if not os.path.exists(KNOWLEDGE_BASE_FILE):
+        with open(KNOWLEDGE_BASE_FILE, "w") as f:
+            json.dump({}, f)
+        logging.info("Initialized new knowledge base.")
+
+# Read and parse different file types
+def parse_resume(file_path: str) -> Dict:
+    """
+    Extracts structured data from a resume (PDF, DOCX, TXT, MD) and stores it in a structured format.
+    """
+    _, file_extension = os.path.splitext(file_path)
+    content = ""
+    
+    try:
+        if file_extension.lower() == ".pdf":
+            with open(file_path, "rb") as file:
+                reader = PyPDF2.PdfReader(file)
+                content = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+        elif file_extension.lower() in [".docx", ".doc"]:
+            doc = Document(file_path)
+            content = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+        elif file_extension.lower() in [".txt", ".md"]:
+            with open(file_path, "r", encoding="utf-8") as file:
+                content = file.read()
+        else:
+            logging.error(f"Unsupported file format: {file_extension}")
+            return {}
+    except Exception as e:
+        logging.error(f"Error reading file {file_path}: {e}")
+        return {}
+    
+    return extract_structured_data(content)
+
+# Extract structured data from raw text
+def extract_structured_data(text: str) -> Dict:
+    """
+    Basic structured parsing of resume text.
+    """
+    data = {
+        "name": "Unknown",
+        "email": "Unknown",
+        "phone": "Unknown",
+        "linkedin": "Unknown",
+        "work_experience": [],
+        "education": [],
+        "skills": []
+    }
+    
+    lines = text.split("\n")
+    for line in lines:
+        if "@" in line and ".com" in line:
+            data["email"] = line.strip()
+        elif "linkedin.com" in line:
+            data["linkedin"] = line.strip()
+        elif any(keyword in line.lower() for keyword in ["work experience", "professional experience"]):
+            data["work_experience"].append(line.strip())
+        elif "education" in line.lower():
+            data["education"].append(line.strip())
+        elif any(keyword in line.lower() for keyword in ["skills", "expertise"]):
+            data["skills"].append(line.strip())
+    
+    return data
+
+# Generate a unique user ID based on extracted data
+def generate_user_id(name: str, email: str) -> str:
+    if email != "Unknown":
+        return hashlib.md5(email.encode()).hexdigest()  # Unique but anonymized ID
+    return f"user_{int(time.time())}"  # Fallback to timestamp-based ID
+
+# Save structured resume data to Knowledge Base
+def save_to_knowledge_base(user_id: str, resume_data: Dict):
+    """
+    Saves parsed resume data to the knowledge base under a unique user ID.
+    """
+    initialize_knowledge_base()
+    
+    try:
+        with open(KNOWLEDGE_BASE_FILE, "r") as f:
+            knowledge_base = json.load(f)
+        
+        knowledge_base[user_id] = resume_data
+        
+        with open(KNOWLEDGE_BASE_FILE, "w") as f:
+            json.dump(knowledge_base, f, indent=4)
+        logging.info(f"Resume data saved for user {user_id}.")
+    except Exception as e:
+        logging.error(f"Error saving to knowledge base: {e}")
+
+# Main function to process resume
+def process_resume(file_path: str):
+    """
+    Parses and saves a resume to the knowledge base.
+    """
+    resume_data = parse_resume(file_path)
+    if resume_data:
+        user_id = generate_user_id(resume_data.get("name", "Unknown"), resume_data.get("email", "Unknown"))
+        save_to_knowledge_base(user_id, resume_data)
+    else:
+        logging.error("Failed to extract structured data from resume.")
 
 def generate_unique_filename(job_title, company, model, extension=".md"):
     """Generates a unique filename using job title, company, model, and timestamp."""
@@ -405,27 +513,27 @@ def main(job_description_path, background_info_path, best_practices_path, select
         if "openai" in selected_models:
             try:
                 openai_resume = generate_resume(
-                    job_description, background_info, best_practices, provider="openai", model="gpt-4o"
+                    job_description, background_info, best_practices, provider="openai", model="gpt-4o-mini"
                 )
-                save_resume(openai_resume, job_title, company_name, "gpt-4o", format="md")
+                save_resume(openai_resume, job_title, company_name, "gpt-4o-mini", format="md")
             except Exception as e:
                 logger.error(f"Failed to generate/save OpenAI resume: {e}")
 
         if "anthropic" in selected_models:
             try:
                 claude_resume = generate_resume(
-                    job_description, background_info, best_practices, provider="anthropic", model="claude-3-sonnet"
+                    job_description, background_info, best_practices, provider="anthropic", model="claude-3-5-haiku-latest"
                 )
-                save_resume(claude_resume, job_title, company_name, "claude-3-sonnet", format="md")
+                save_resume(claude_resume, job_title, company_name, "claude-3-5-haiku-latest", format="md")
             except Exception as e:
                 logger.error(f"Failed to generate/save Anthropic resume: {e}")
 
         if "mistral" in selected_models:
             try:
                 mistral_resume = generate_resume(
-                    job_description, background_info, best_practices, provider="mistral", model="mistral-large"
+                    job_description, background_info, best_practices, provider="mistral", model="mistral-large-latest"
                 )
-                save_resume(mistral_resume, job_title, company_name, "mistral-large", format="md")
+                save_resume(mistral_resume, job_title, company_name, "mistral-large-latest", format="md")
             except Exception as e:
                 logger.error(f"Failed to generate/save Mistral resume: {e}")
 
