@@ -240,7 +240,7 @@ def extract_job_details_with_llm(text):
     """
 
     response = mistral_client.chat.completions.create(
-        model="mistral-large-latest",  # Faster & cheaper model
+        model="mistral-large-latest",  
         messages=[{"role": "user", "content": prompt}],
         max_tokens=100,
         temperature=0  # Reduce creativity for precise extraction
@@ -501,7 +501,7 @@ def main(job_description_path, background_info_path, best_practices_path, select
 
     # Default: Run all models if none are selected
     if selected_models is None:
-        selected_models = ["openai", "anthropic", "mistral"]
+        selected_models = ["mistral"]
 
     try:
         job_description, background_info, best_practices = process_uploaded_files(
