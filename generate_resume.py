@@ -352,24 +352,42 @@ def generate_resume(
     default_prompt = f"""
     Job Description:
     {job_description}
-
+    -----
     My Professional Background:
     {background_info}
-
-    Best Practices for Job Applications:
+    -----
+    #Best Practices for Job Applications:
     {best_practices}
-
+    -----
     Based on the job description, my professional background, and the best practices for job applications, 
     generate a tailored resume in markdown format. The resume should highlight relevant skills and experiences 
-    that match the job requirements. Please structure the resume with the following sections:
+    that match the job requirements. 
 
-    1. Contact Information
-    2. Work Experience
-    3. Education
-    4. Skills (if relevant)
-    5. Additional Sections (if relevant)
+    Structure it like:
+    # Name
+    ## Contact
+    ## Experience
+    ## Education
+    ## Skills
 
     Ensure that the content is concise, impactful, and directly relevant to the product manager position described.
+    Generate a professional resume in strict Markdown only. 
+    Very important: No extraneous text. Your output will be converted to a pdf as is and needs to only include the final product. 
+    Please keep in mind the differences between the job description, my professional background, and the best practices provided. 
+    Be very careful not to mix up the information in the background info with that of the best practices. 
+    All information should be truthful based on my professional background info provided, but feel free to use your best judgement to 
+    rephrase (within reason) to match the job description and underlying desires of the recruiter, hiring manager, and team. 
+    Think about the user experience of all those who will read the results as well as any ATS. 
+    Make efficient use of space keeping things on the same line when possible. 
+    For example, by grouping relevant skills
+    Structure it like:
+    # Name
+    ## Contact
+    ## Experience
+    ## Education
+    ## Skills
+    -----
+    Wait. Understand. Reflect. Be thoughtful, thorough, detailed, and organized. Do your best. 
     """
 
     # Use the custom prompt if provided, otherwise use the default
@@ -383,7 +401,7 @@ def generate_resume(
         response = openai_client.chat.completions.create(
             model=model,  # The specific model to use (e.g., 'gpt-3.5-turbo')
             messages=[
-                {"role": "system", "content": "You are an expert resume writer specializing in product management positions."},
+                {"role": "system", "content": "You are an expert resume writer specializing in product management positions. You deliver results in a ready-to-go format with no other output."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=max_tokens,  # Limit the response length. Adjust this for longer or shorter resumes.
