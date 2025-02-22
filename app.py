@@ -74,7 +74,7 @@ def index():
             return jsonify({"error": f"Resume generation failed: {str(e)}"}), 500
 
         # Save the generated resume
-        resume_path = save_resume(resume, job_title, company_name, "mistral-large", format="md")
+        resume_path = save_resume(resume, job_title, company_name, "mistral-small-latest", format="md")
         with open(resume_path, 'w', encoding='utf-8') as f:
             f.write(resume)
 

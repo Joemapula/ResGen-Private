@@ -1,134 +1,203 @@
-# ResGen - AI-Powered Resume Generator
+Here's an updated version of your **README** based on both the current content and the recent status update. It refines the structure, reflects completed work, highlights known issues, and aligns with your portfolio goals.
 
-## Why ResGen?
-Job searching is hard, and existing resume tools often fall short. ResGen aims to make this process easier by focusing on two key advantages:
+---
 
-1. **Niche Resume Best Practices**: Instead of using generic templates, ResGen focuses on tech industry standards and role-specific emphasis.
-2. **Comprehensive Background Processing**: Unlike other tools, ResGen leverages LLMs' ability to process extensive background information, creating more personalized and relevant outputs.
+# 📝 **ResGen – AI-Powered Resume Generator**
 
-## Project Vision & Status
+## 💡 **Why ResGen?**
+Job searching is hard, and existing resume tools often fall short. **ResGen** simplifies the process by focusing on two key advantages:
 
-### Current Shape: One-Shot PDFs
-The current version focuses on quickly generating tailored resumes by combining:
-- Job descriptions
-- Detailed professional background
-- Industry-specific best practices
+1. **🎯 Niche Resume Best Practices**  
+   ResGen emphasizes **tech industry standards** and **role-specific formatting** rather than generic templates.
 
-Current features include:
-- Web interface for file uploads and resume generation
-- Command-line interface for local use
-- Support for both OpenAI (GPT) and Anthropic (Claude) models
-- Markdown output format
-- Structured resume sections (Contact, Experience, Education, Skills)
-- Logging system for debugging
+2. **🤖 Comprehensive Background Processing**  
+   Unlike many tools, ResGen leverages **LLMs** (OpenAI & Anthropic) to process **extensive professional backgrounds**, creating **personalized** and **relevant** resumes.
 
-### Known Limitations
-- Limited file format support
-- Basic PDF styling
-- Single-use resume generation
+---
 
-### Future Direction & Evolution
-The project is intentionally flexible in its direction. We're exploring evolution into a broader job search tool, focusing on:
+## 🚀 **Project Vision & Status**
 
-#### Knowledge Base Creation
-Many people struggle with various aspects of job hunting:
-- Resume creation
-- Cover letter writing
-- Interview preparation
-- The "Tell me about yourself" pitch
+### ✅ **Current Core Features**
+- **AI Model Integration:**  
+  Supports **OpenAI (GPT)** and **Anthropic (Claude)** with model selection flexibility.
 
-At the heart of all these is how we perceive and present our experiences. We're exploring ways to:
-1. **Gather** - Help people provide the right information about their experiences
-2. **Compile** - Organize this information for multiple uses
-3. **Leverage** - Use AI to transform this information for different purposes
+- **Dual Interface:**  
+  - 🖥️ **Web Interface** (Flask-based) for file uploads and resume downloads.  
+  - 🛠️ **Command-Line Interface (CLI)** for local usage.
 
-## Getting Started
+- **File Handling:**  
+  - Supports `.txt` and `.md` files for inputs.  
+  - Temporary file handling with cleanup processes.
 
-### Prerequisites
-- Python 3.8+
-- OpenAI API key
-- Anthropic API key
+- **Resume Output:**  
+  - Structured Markdown format with sections (Contact, Experience, Education, Skills).  
+  - Conversion options to **DOCX** and **PDF** using **Pandoc** (supports `pdflatex`, `xelatex`, and `lualatex` engines).
 
-### Installation
-1. Clone the repository
+- **Robust Logging & Error Handling:**  
+  - Detailed logs for file processing, API interactions, and conversion outcomes.  
+  - Structured error handling with multiple log levels.
+
+---
+
+### ⚠️ **Known Limitations**
+- **🚫 Limited File Format Support:**  
+  PDF and Word document reading not fully implemented.
+
+- **🎨 Basic PDF Styling:**  
+  LaTeX engine inconsistencies affect formatting.
+
+- **💾 Single-Use Resume Generation:**  
+  No current iteration/feedback mechanism for refining resumes.
+
+- **❗ Incomplete Error Handling:**  
+  Some cases lack user-facing error messages or graceful failures.
+
+---
+
+### 🔮 **Future Direction**
+The long-term vision is to evolve ResGen into a **full-fledged job search tool**, expanding beyond resumes into:
+
+1. 🗃️ **Knowledge Base Creation**  
+   - Centralized user data for resume, cover letter, and interview prep.
+   - Structured experience data for multiple job application materials.
+
+2. 💌 **Cover Letter Generation**  
+   - Leverage user data to auto-generate tailored cover letters.
+
+3. 🎤 **Interview Preparation Tools**  
+   - Create personalized "Tell me about yourself" pitches.
+   - AI-generated interview questions based on job descriptions.
+
+4. 📊 **Job Search Dashboard**  
+   - Track applications, interview stages, and recruiter feedback.
+
+---
+
+## 📂 **Project Structure**
+
+```
+resgen/
+├── app.py               # Flask web application (Web Interface)
+├── generate_resume.py   # Core resume generation logic (CLI)
+├── templates/           # Web interface templates
+├── uploads/             # Temporary file storage
+├── outputs/             # Generated resumes (Markdown, DOCX, PDF)
+├── logs/                # Log files
+├── .env                 # API Keys for OpenAI & Anthropic
+├── requirements.txt     # Python dependencies
+└── README.md            # This file
+```
+
+---
+
+## ⚙️ **Getting Started**
+
+### 🛠️ **Prerequisites**
+- Python **3.8+**
+- **OpenAI API key** and **Anthropic API key**
+- **Pandoc** & **LaTeX distribution** (MiKTeX/TeXLive) for DOCX/PDF conversions
+
+---
+
+### 📥 **Installation**
+
+1. **Clone the repository**
 ```bash
 git clone https://github.com/yourusername/resgen.git
 cd resgen
 ```
 
-2. Install dependencies
+2. **Install dependencies**
 ```bash
-setup.bat
+pip install -r requirements.txt
 ```
 
-
-3. Set up environment variables
+3. **Set up API keys**
 ```bash
 cp .env.example .env
-# Edit .env with your API keys
+# Add your OpenAI and Anthropic API keys in the .env file
 ```
 
-### Usage
+---
 
-#### Web Interface
+## ⚡ **Usage Guide**
+
+### ✅ **Web Interface**
 ```bash
 python app.py
 ```
-Then visit `http://localhost:5000` in your browser.
+- Visit `http://localhost:5000` to upload files and generate resumes.
 
-#### Command Line
+---
+
+### ✅ **Command Line (CLI)**
 ```bash
-python generate_resume.py job_description.txt background_info.txt best_practices.txt
+python generate_resume.py job_description.txt background_info.txt best_practices.txt --generate-docx --generate-pdf
 ```
 
-## Input Files
-The system needs three text files:
-1. **Job Description**: The position you're applying for
-2. **Background Information**: Your professional experience and achievements
-3. **Best Practices**: Resume guidelines (we provide defaults for tech roles)
+**Flags:**
+- `--generate-docx` → Create a DOCX file  
+- `--generate-pdf` → Create a PDF file  
+- `--test-conversions` → Run conversion tests on existing Markdown  
+- `--md-file` → Specify Markdown file for testing  
+- `--docx-template` → Specify DOCX template for styling  
 
-## Development
+---
 
-### Project Structure
-```
-resgen/
-├── app.py              # Flask web application
-├── generate_resume.py  # Core resume generation logic
-├── templates/         # Web interface templates
-└── uploads/          # Temporary file storage
-```
+## 📁 **Input Files**
+1. **`job_description.txt`** → The specific role you’re applying for  
+2. **`background_info.txt`** → Your professional experience, achievements, and skills  
+3. **`best_practices.txt`** → Resume writing guidelines (tech industry defaults provided)
 
-### Development Philosophy
+---
 
-- Experimental: Try things out, see what works
-- Collaborative: Open to new ideas and approaches
-- Iterative: Start simple, improve based on feedback
-- Learning-focused: Great opportunity to work with AI, web development, and document processing
+## 🐞 **Known Issues**
+- **DOCX File Corruption**: Some DOCX files experience corruption when using certain templates.  
+- **PDF Formatting Inconsistencies**: Varies based on the LaTeX engine used.  
+- **API Error Handling**: Some edge cases lack robust handling or informative feedback.
 
-### Local Development
-1. Create a new branch for your feature
-2. Make changes and test locally
-3. Create a pull request for review
+---
 
-### Looking for Help With
-- UI/UX improvements
-- Additional output formats
-- Template design
-- Testing and feedback
-- New ideas and approaches
+## 📊 **Roadmap**
 
-## Collaboration Philosophy
-This project is meant to be collaborative and experimental. If you're interested in contributing:
-- Have an idea? Share it!
-- Want to try a new tool or approach? Go for it!
-- See a different direction? Let's discuss it!
+### 🔥 **High Priority**
+- [ ] Complete PDF and Word document reading functionality  
+- [ ] Implement feedback mechanism for resume iteration  
+- [ ] Add robust error messages for unsupported file types  
+- [ ] Update AI model versions to current releases  
 
-The goal is to create something useful while learning and experimenting together.
+### 🌟 **Medium Priority**
+- [ ] Resume template selection  
+- [ ] Export options: DOCX, PDF, and HTML  
+- [ ] Cover letter generation  
 
-## Contributors
-- Joseph Mapula (Creator)
-- Chris Morris 
-- Stephen Roberts 
+### 🌐 **Future Plans**
+- [ ] Interview preparation tools  
+- [ ] Resume comparison feature  
+- [ ] Centralized knowledge base for job search assets  
+
+---
+
+## ✅ **Contributing**
+1. Fork the repo  
+2. Create a new branch (`git checkout -b feature/your-feature`)  
+3. Commit your changes (`git commit -m 'Add new feature'`)  
+4. Push to the branch (`git push origin feature/your-feature`)  
+5. Open a Pull Request  
+
+💡 **Looking for help with:**
+- UI/UX design  
+- Additional file format support  
+- Resume styling and templates  
+- API integration improvements  
+- Testing & QA
+
+---
+
+## 🤝 **Contributors**
+- **Joseph Mapula** (Creator)  
+- **Chris Morris**  
+- **Stephen Roberts**  
 
 ## License
 Copyright (c) 2024 Joseph Mapula. All rights reserved.

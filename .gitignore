@@ -1,7 +1,10 @@
 # Conda environment
 /env/
 
-# Python
+# Common editor clutter
+.vscode/
+.idea/
+*.pyc
 __pycache__/
 *.py[cod]
 *$py.class
@@ -12,8 +15,24 @@ __pycache__/
 env/
 venv/
 
-# VS Code
-.vscode/
-
 # OpenAI API Key
 .env
+*.key
+
+# Ignore general outputs and testing outputs but allow examples 
+outputs/*
+testing_outputs/*
+!outputs/example_*
+
+# Ignore temp files and logs
+temp/*
+logs/*
+
+# Ignore uploaded files but allow examples
+uploads/*
+!example_inputs/*
+
+# Ignore backups or swap files
+*.bak
+*.swp
+*.swo
