@@ -16,6 +16,7 @@ import shutil
 import time
 import re
 import json
+import subprocess 
 from typing import Dict
 # Import the logging module, which provides a flexible framework for generating log messages in Python
 import logging
@@ -495,8 +496,11 @@ def save_resume(resume_content, job_title, company, model, format="md"):
     output_path = generate_unique_filename(job_title, company, model, extension)
     
     try:
+        # Remove any wrapping backticks before saving
+        cleaned_content = resume_content.strip('`').strip()
+        
         with open(output_path, "w", encoding="utf-8") as file:
-            file.write(resume_content)
+            file.write(cleaned_content)
         logging.info(f"Resume saved successfully: {output_path}")
         return output_path
     except Exception as e:
@@ -504,9 +508,109 @@ def save_resume(resume_content, job_title, company, model, format="md"):
         return None
 
 
-def main(job_description_path, background_info_path, best_practices_path, selected_models=None, log_level=logging.INFO):
+
+
+def clean_markdown_file(md_path: str) -> str:
     """
-    Runs resume generation only for the selected AI models.
+    Cleans the Markdown file by removing problematic starting characters or extra spaces.
+    
+    Args:
+        md_path (str): Path to the Markdown file.
+
+    Returns:
+        str: Path to the cleaned Markdown file.
+    """
+    try:
+        with open(md_path, 'r', encoding='utf-8') as file:
+            lines = file.readlines()
+
+        # Remove leading backticks or code block starts
+        cleaned_lines = []
+        for line in lines:
+            # Remove code block fences or accidental ```markdown
+            if line.strip().startswith("```"):
+                continue
+            cleaned_lines.append(line)
+
+        # Overwrite the file with cleaned content
+        with open(md_path, 'w', encoding='utf-8') as file:
+            file.writelines(cleaned_lines)
+
+        logging.info(f"Markdown file cleaned: {md_path}")
+        return md_path
+
+    except Exception as e:
+        logging.error(f"Error cleaning Markdown file: {e}")
+        return md_path  # Return original if cleaning fails
+
+def convert_md_to_pdf(md_path: str, engine: str = "xelatex") -> str:
+    """Convert Markdown to PDF using Pandoc with custom layout settings."""
+    # Clean the markdown before conversion
+    md_path = clean_markdown_file(md_path)
+
+    pdf_path = md_path.replace(".md", f"_{engine}.pdf")
+    try:
+        result = subprocess.run([
+            "pandoc", md_path, "-o", pdf_path,
+            "--pdf-engine", engine,
+            "--variable=geometry:margin=1in",  # Apply 1-inch margins
+            "--wrap=auto"                      # Ensure lines wrap properly
+        ], capture_output=True, text=True, check=True)
+        logging.info(f"Converted to PDF using {engine}: {pdf_path}")
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Pandoc PDF conversion with {engine} failed: {e.stderr}")
+        return ""
+    return pdf_path
+
+def convert_md_to_docx(md_path: str, template_path: str) -> str:
+    """Convert Markdown to DOCX using Pandoc with a Word template."""
+    # Clean Markdown before conversion
+    md_path = clean_markdown_file(md_path)
+
+    docx_path = md_path.replace(".md", ".docx")
+    try:
+        result = subprocess.run([
+            "pandoc", md_path, "-o", docx_path,
+            "--reference-doc", template_path,
+            "--from=markdown", "--standalone"
+        ], capture_output=True, text=True, check=True)
+        logging.info(f"Converted to DOCX: {docx_path}")
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Pandoc DOCX conversion failed: {e.stderr}")
+        return ""
+    return docx_path
+
+
+# def test_all_conversions(md_path: str, docx_template_path: str):
+#     """Run DOCX and multiple PDF engine conversions for testing."""
+#     logging.info("Starting conversion tests...")
+#     md_path = clean_markdown_file(md_path)
+#     # DOCX Conversion
+#     docx_output = convert_md_to_docx(md_path, docx_template_path)
+
+#     # PDF Conversions with different engines
+#     pdf_engines = ["pdflatex", "xelatex", "lualatex"]
+#     pdf_outputs = {}
+#     for engine in pdf_engines:
+#         pdf_outputs[engine] = convert_md_to_pdf(md_path, engine=engine)
+
+#     logging.info("Conversion tests completed.")
+#     return {
+#         "docx": docx_output,
+#         "pdf": pdf_outputs  }
+
+# Example usage
+if __name__ == "__main__":
+    md_file = r"C:\Users\josep\Documents\programming_projects\GitHub\ResGen-Private\outputs\resume_unknown_company_108800-_mistral-large-latest_2025-02-21_152125.md"  # Replace with actual path
+    docx_template = r"C:\Users\josep\Documents\programming_projects\GitHub\ResGen-Private\uploads\pandoc_resume_template.docx"  # Replace with actual template path
+
+    results = test_all_conversions(md_file, docx_template)
+    logging.info(f"Results: {results}")
+
+
+def main(job_description_path, background_info_path, best_practices_path, selected_models=None, log_level=logging.INFO, generate_docx=True, generate_pdf=False):
+    """
+    Runs resume generation for the selected AI models and converts to DOCX/PDF if specified.
 
     Args:
         job_description_path (str): Path to the job description file.
@@ -514,8 +618,11 @@ def main(job_description_path, background_info_path, best_practices_path, select
         best_practices_path (str): Path to the best practices file.
         selected_models (list, optional): List of models to run (e.g., ["openai", "mistral"]).
         log_level (int, optional): Logging level.
+        generate_docx (bool, optional): Whether to generate DOCX output.
+        generate_pdf (bool, optional): Whether to generate PDF output.
     """
     logging.getLogger().setLevel(log_level)
+    template_path = r"C:\Users\josep\Documents\programming_projects\GitHub\ResGen-Private\uploads\pandoc_resume_template.docx"
 
     # Default: Run all models if none are selected
     if selected_models is None:
@@ -528,52 +635,52 @@ def main(job_description_path, background_info_path, best_practices_path, select
 
         job_title, company_name = extract_job_title_and_company_regex(job_description)
 
-        if "openai" in selected_models:
-            try:
-                openai_resume = generate_resume(
-                    job_description, background_info, best_practices, provider="openai", model="gpt-4o-mini"
-                )
-                save_resume(openai_resume, job_title, company_name, "gpt-4o-mini", format="md")
-            except Exception as e:
-                logger.error(f"Failed to generate/save OpenAI resume: {e}")
+        for model_provider, model_name in [
+            ("openai", "gpt-4o-mini"),
+            ("anthropic", "claude-3-5-haiku-latest"),
+            ("mistral", "mistral-large-latest")
+        ]:
+            if model_provider in selected_models:
+                try:
+                    resume_md = generate_resume(
+                        job_description, background_info, best_practices, provider=model_provider, model=model_name
+                    )
+                    # Save Markdown
+                    md_path = save_resume(resume_md, job_title, company_name, model_name, format="md")
+                    
+                    # Clean Markdown before conversion
+                    md_path = clean_markdown_file(md_path)
 
-        if "anthropic" in selected_models:
-            try:
-                claude_resume = generate_resume(
-                    job_description, background_info, best_practices, provider="anthropic", model="claude-3-5-haiku-latest"
-                )
-                save_resume(claude_resume, job_title, company_name, "claude-3-5-haiku-latest", format="md")
-            except Exception as e:
-                logger.error(f"Failed to generate/save Anthropic resume: {e}")
+                    # Convert to DOCX if enabled
+                    if generate_docx:
+                        convert_md_to_docx(md_path, template_path)
 
-        if "mistral" in selected_models:
-            try:
-                mistral_resume = generate_resume(
-                    job_description, background_info, best_practices, provider="mistral", model="mistral-large-latest"
-                )
-                save_resume(mistral_resume, job_title, company_name, "mistral-large-latest", format="md")
-            except Exception as e:
-                logger.error(f"Failed to generate/save Mistral resume: {e}")
 
-        logger.info("Resumes generated and saved successfully!")
+                    # Convert to PDF if enabled
+                    if generate_pdf:
+                        convert_md_to_pdf(md_path)
+
+                except Exception as e:
+                    logging.error(f"Failed to process {model_provider} ({model_name}): {e}")
+
+        logging.info("Resumes generated and converted successfully!")
 
     except FileNotFoundError as e:
-        logger.error(f"File not found: {str(e)}")
+        logging.error(f"File not found: {str(e)}")
     except ValueError as e:
-        logger.error(f"Invalid input: {str(e)}")
+        logging.error(f"Invalid input: {str(e)}")
     except IOError as e:
-        logger.error(f"I/O error occurred: {str(e)}")
+        logging.error(f"I/O error occurred: {str(e)}")
     except anthropic.APIError as e:
-        logger.error(f"Anthropic API error: {str(e)}")
+        logging.error(f"Anthropic API error: {str(e)}")
     except openai.APIError as e:
-        logger.error(f"OpenAI API error: {str(e)}")
+        logging.error(f"OpenAI API error: {str(e)}")
     except openai.APIConnectionError as e:
-        logger.error(f"Failed to connect to OpenAI API: {e}")
+        logging.error(f"Failed to connect to OpenAI API: {e}")
     except openai.RateLimitError as e:
-        logger.error(f"OpenAI API request exceeded rate limit: {e}")
+        logging.error(f"OpenAI API request exceeded rate limit: {e}")
     except Exception as e:
-        logger.error(f"An unexpected error occurred: {str(e)}")
-
+        logging.error(f"An unexpected error occurred: {str(e)}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate resumes using AI")
@@ -584,12 +691,17 @@ if __name__ == "__main__":
                         help="Specify which models to run (default: all)")
     parser.add_argument("--log-level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                         default='INFO', help="Set the logging level")
+    parser.add_argument("--generate-docx", action="store_true", 
+                        help="Generate DOCX output in addition to Markdown")
+    parser.add_argument("--generate-pdf", action="store_true", 
+                        help="Generate PDF output in addition to Markdown")
 
     args = parser.parse_args()
     log_level = getattr(logging, args.log_level)
     
-    # Pass selected models to main()
-    main(args.job_description, args.background_info, args.best_practices, selected_models=args.models, log_level=log_level)
+    # Pass selected inputs to main()
+    main(args.job_description, args.background_info, args.best_practices, selected_models=args.models, 
+         log_level=log_level, generate_docx=args.generate_docx, generate_pdf=args.generate_pdf)
 
     # TODO: Create a user interface for inputting information and selecting options
     # TODO: Add a feedback mechanism for iterating on the generated resumes
